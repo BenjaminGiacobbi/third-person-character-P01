@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 
 [RequireComponent(typeof(Animator))]
-[RequireComponent(typeof(ThirdPersonMovement))]     
+[RequireComponent(typeof(ThirdPersonMovement))]
 public class PlayerCharacterAnimator : MonoBehaviour
 {
     // these names are the same as the animation nodes in Mecanim
@@ -11,6 +11,7 @@ public class PlayerCharacterAnimator : MonoBehaviour
     const string RunState = "Run";
     const string JumpState = "Jumping";
     const string FallState = "Falling";
+    const string LandState = "Land";
 
     // animator field
     Animator _animator = null;
@@ -30,14 +31,19 @@ public class PlayerCharacterAnimator : MonoBehaviour
     {
         _movementScript.Idle += OnIdle;
         _movementScript.StartRunning += OnStartRunning;
+        _movementScript.StartJump += OnStartJump;
+        _movementScript.StartFall += OnStartFalling;
     }
 
     private void OnDisable()
     {
         _movementScript.Idle -= OnIdle;
         _movementScript.StartRunning -= OnStartRunning;
+        _movementScript.StartJump -= OnStartJump;
+        _movementScript.StartFall -= OnStartFalling;
     }
     #endregion
+
 
     // i have no idea what any of this I'm trying my best alright
     public void OnIdle()
@@ -48,5 +54,15 @@ public class PlayerCharacterAnimator : MonoBehaviour
     public void OnStartRunning()
     {
         _animator.CrossFadeInFixedTime(RunState, .2f);
+    }
+
+    public void OnStartJump()
+    {
+        _animator.CrossFadeInFixedTime(JumpState, .2f);
+    }
+
+    public void OnStartFalling()
+    {
+        _animator.CrossFadeInFixedTime(FallState, .2f);
     }
 }

@@ -8,37 +8,72 @@ public class ThirdPersonMovement : MonoBehaviour
 {
     public event Action Idle = delegate { };
     public event Action StartRunning = delegate { };
+    public event Action StartJump = delegate { };
+    public event Action StartFall = delegate { };
+    public event Action StartSprint = delegate { };
+    public event Action StopSprint = delegate { };
+    public event Action Land = delegate { };
 
     [SerializeField] float _speed = 6f;
+    [SerializeField] float _sprintModifier = 2f;
+    [SerializeField] float _jumpSpeed = 10f;
+    [SerializeField] float _fallGravityMultiplier = 2.5f;
+    [SerializeField] float _lowGravityMultiplier = 2f;
     [SerializeField] float _turnSmoothTime = 0.1f;
+    // [SerializeField] GroundDetector _groundDetector = null;
 
+    // fields for physics calculation
+    private float _turnSmoothVelocity;
+    private float _verticalVelocity;
+    private float _sprintSpeed;
+    private bool _isMoving = false;
+    private bool _isJumping = false;
+    private bool _isSprinting = false;
+
+    // references
+    PlayerInput _playerInput;
     CharacterController _controller;
     Transform _camTransform;
-    private float _turnSmoothVelocity;
-    private bool _isMoving = false;
+    
+
 
     // caching
     private void Awake()
     {
+        _playerInput = GetComponent<PlayerInput>();
         _controller = GetComponent<CharacterController>();
         _camTransform = Camera.main.transform;
     }
+
+    #region subscriptions
+    private void OnEnable()
+    {
+        _playerInput.Move += ApplyMovement;
+        _playerInput.Jump += ApplyJump;
+        _playerInput.Sprint += ApplySprint;
+    }
+
+    private void OnDisable()
+    {
+        _playerInput.Move -= ApplyMovement;
+        _playerInput.Jump -= ApplyJump;
+        _playerInput.Sprint -= ApplySprint;
+    }
+    #endregion
+
 
     // start is called the frame after awake
     private void Start()
     {
         Idle?.Invoke();
+        _sprintSpeed = _speed * _sprintModifier;
     }
 
-    // Update is called once per frame
-    void Update()
+    // calculates player movement and accesses controller
+    private void ApplyMovement(Vector3 direction)
     {
-        float horizontal = Input.GetAxisRaw("Horizontal");
-        float vertical = Input.GetAxisRaw("Vertical");
-
-        Vector3 direction = new Vector3(horizontal, 0f, vertical).normalized;
-
-        if(direction.magnitude >= 0.1f)
+        
+        if (direction.magnitude >= 0.1f)
         {
             CheckIfStartedMoving();
             // Atan is tangent of angle between the x axis and vector starting at 0 and terminating at x, y (in radians by default)
@@ -58,12 +93,53 @@ public class ThirdPersonMovement : MonoBehaviour
         {
             CheckIfStoppedMoving();
         }
+        
+    }
+
+    // accepts the raw input axis for jump (can be either 1 or 0)
+    private void ApplyJump(float jumpAxis)
+    {
+        // resets velocity for each setp
+        
+        if(_controller.isGrounded)
+        {
+            CheckIfLanded();
+            _verticalVelocity = Physics.gravity.y * Time.deltaTime;
+            if (jumpAxis > 0)
+            {
+                _verticalVelocity = _jumpSpeed;
+            }
+        }
+        else
+        {
+            CheckIfJumped();
+            _verticalVelocity += Physics.gravity.y * Time.deltaTime;
+        }
+
+        Vector3 playerMovement = new Vector3(0, _verticalVelocity, 0);
+        _controller.Move(playerMovement * Time.deltaTime);
+    }
+
+
+    // applies sprint
+    private void ApplySprint(float sprintAxis)
+    {
+        if(sprintAxis > 0 && _controller.isGrounded)
+        {
+            CheckIfStartedSprinting();
+            _speed = _sprintSpeed;
+        }
+        else if(sprintAxis == 0)
+        {
+            CheckIfstoppedSprinting();
+            _speed = _sprintSpeed / _sprintModifier;
+        }
     }
 
 
     private void CheckIfStartedMoving()
     {
-        if(_isMoving == false)
+        if(!_isMoving)
         {
             // our velocity said we started moving but previously we were not, so set _isMoving
             StartRunning?.Invoke();
@@ -74,12 +150,55 @@ public class ThirdPersonMovement : MonoBehaviour
 
     private void CheckIfStoppedMoving()
     {
-        if (_isMoving == true)
+        if (_isMoving)
         {
             // our velocity said we stopped moving but previously were, so set _isMoving
             Idle?.Invoke();
             Debug.Log("Stopped");
         }
         _isMoving = false;
+    }
+
+    private void CheckIfLanded()
+    {
+        if(_isJumping)
+        {
+            Land?.Invoke();
+            Debug.Log("Landed");
+        }
+        _isJumping = false;
+    }
+
+    private void CheckIfJumped()
+    {
+        if (!_isJumping)
+        {
+            StartJump?.Invoke();
+            Debug.Log("JumpStarted");
+        }
+        _isJumping = true;
+    }
+
+    private void CheckIfStartedSprinting()
+    {
+        if(!_isSprinting)
+        {
+            StartSprint?.Invoke();
+        }
+        _isSprinting = true;
+    }
+
+    private void CheckIfstoppedSprinting()
+    {
+        if (!_isSprinting)
+        {
+            StopSprint?.Invoke();
+        }
+        _isSprinting = true;
+    }
+
+    bool Grounded()
+    {
+        return Physics.Raycast(_controller.center, Vector3.down, _controller.height / 2 + 0.3f);
     }
 }
