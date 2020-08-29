@@ -7,7 +7,8 @@ public class PlayerInput : MonoBehaviour
 {
     public event Action<Vector3> Move = delegate { };
     public event Action<float> Jump = delegate { };
-    public event Action<float> Sprint = delegate { };
+    public event Action StartSprint = delegate { };
+    public event Action StopSprint = delegate { };
 
     private void Update()
     {
@@ -35,7 +36,9 @@ public class PlayerInput : MonoBehaviour
 
     private void SprintInput()
     {
-        float sprintFloat = Input.GetAxisRaw("Sprint");
-        Sprint?.Invoke(sprintFloat);
+        if(Input.GetButtonDown("Sprint"))
+            StartSprint?.Invoke();
+        if (Input.GetButtonUp("Sprint"))
+            StopSprint?.Invoke();
     }
 }

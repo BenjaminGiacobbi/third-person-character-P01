@@ -11,24 +11,27 @@ public class ThirdPersonMovement : MonoBehaviour
     public event Action StartJump = delegate { };
     public event Action StartFall = delegate { };
     public event Action StartSprint = delegate { };
-    public event Action StopSprint = delegate { };
     public event Action Land = delegate { };
 
     [SerializeField] float _speed = 6f;
+    [SerializeField] float _slowSpeed = 2f;
     [SerializeField] float _sprintModifier = 2f;
     [SerializeField] float _jumpSpeed = 10f;
-    [SerializeField] float _fallGravityMultiplier = 2.5f;
-    [SerializeField] float _lowGravityMultiplier = 2f;
+    [SerializeField] float _fallGravityMultiplier = 1.02f;
     [SerializeField] float _turnSmoothTime = 0.1f;
-    // [SerializeField] GroundDetector _groundDetector = null;
+    [SerializeField] float _landAnimationTime = 0.467f;
+
 
     // fields for physics calculation
     private float _turnSmoothVelocity;
     private float _verticalVelocity;
     private float _sprintSpeed;
-    private bool _isMoving = false;
+
+    // character state flags
+    private bool _isRunning = false;
     private bool _isJumping = false;
-    private bool _isSprinting = false;
+    private bool _isFalling = false;
+    private bool _sprint = false;
 
     // references
     PlayerInput _playerInput;
@@ -50,14 +53,16 @@ public class ThirdPersonMovement : MonoBehaviour
     {
         _playerInput.Move += ApplyMovement;
         _playerInput.Jump += ApplyJump;
-        _playerInput.Sprint += ApplySprint;
+        _playerInput.StartSprint += ApplySprint;
+        _playerInput.StopSprint += CancelSprint;
     }
 
     private void OnDisable()
     {
         _playerInput.Move -= ApplyMovement;
         _playerInput.Jump -= ApplyJump;
-        _playerInput.Sprint -= ApplySprint;
+        _playerInput.StartSprint -= ApplySprint;
+        _playerInput.StopSprint -= CancelSprint;
     }
     #endregion
 
@@ -68,6 +73,7 @@ public class ThirdPersonMovement : MonoBehaviour
         Idle?.Invoke();
         _sprintSpeed = _speed * _sprintModifier;
     }
+
 
     // calculates player movement and accesses controller
     private void ApplyMovement(Vector3 direction)
@@ -100,11 +106,11 @@ public class ThirdPersonMovement : MonoBehaviour
     private void ApplyJump(float jumpAxis)
     {
         // resets velocity for each setp
-        
-        if(_controller.isGrounded)
+        if (Grounded())
         {
             CheckIfLanded();
-            _verticalVelocity = Physics.gravity.y * Time.deltaTime;
+
+            // if jumpAxis is positive (pressed), starts jump)
             if (jumpAxis > 0)
             {
                 _verticalVelocity = _jumpSpeed;
@@ -112,8 +118,12 @@ public class ThirdPersonMovement : MonoBehaviour
         }
         else
         {
-            CheckIfJumped();
             _verticalVelocity += Physics.gravity.y * Time.deltaTime;
+
+            // applies slightly higher gravity on downward fall to feel a little more weighty
+            if (_controller.velocity.y < 0)
+                _verticalVelocity += Physics.gravity.y * (_fallGravityMultiplier - 1) * Time.deltaTime;
+            CheckIfJumping();
         }
 
         Vector3 playerMovement = new Vector3(0, _verticalVelocity, 0);
@@ -122,83 +132,120 @@ public class ThirdPersonMovement : MonoBehaviour
 
 
     // applies sprint
-    private void ApplySprint(float sprintAxis)
+    private void ApplySprint()
     {
-        if(sprintAxis > 0 && _controller.isGrounded)
-        {
-            CheckIfStartedSprinting();
+        // sets sprint flag regardless of grounding so state can be updated upon landing
+        if(!_sprint)
+            _sprint = true;
+
+        Debug.Log("Sprint: " + _sprint);
+
+        if (Grounded() && _isRunning)
+        {        
+            StartSprint?.Invoke();
             _speed = _sprintSpeed;
-        }
-        else if(sprintAxis == 0)
-        {
-            CheckIfstoppedSprinting();
-            _speed = _sprintSpeed / _sprintModifier;
         }
     }
 
+    private void CancelSprint()
+    {
+        _sprint = false;
+        if (Grounded() && _isRunning)
+            StartRunning?.Invoke();
+        _speed = _sprintSpeed / _sprintModifier;
+    }
 
+
+    // TODO most of this checks are basically identical, perhaps make this a method call with params?
     private void CheckIfStartedMoving()
     {
-        if(!_isMoving)
+        if (!_isRunning && !_isJumping)
         {
-            // our velocity said we started moving but previously we were not, so set _isMoving
-            StartRunning?.Invoke();
-            Debug.Log("Started");
+            _isRunning = true;
+            if (_sprint)
+            {
+                
+                ApplySprint();
+                Debug.Log("Sprinting");
+            }
+            else
+            {
+                StartRunning?.Invoke();
+                Debug.Log("Running");
+            }
         }
-        _isMoving = true;
     }
 
     private void CheckIfStoppedMoving()
     {
-        if (_isMoving)
+        if (_isRunning && !_isJumping)
         {
             // our velocity said we stopped moving but previously were, so set _isMoving
             Idle?.Invoke();
             Debug.Log("Stopped");
         }
-        _isMoving = false;
+        _isRunning = false;
     }
 
-    private void CheckIfLanded()
-    {
-        if(_isJumping)
-        {
-            Land?.Invoke();
-            Debug.Log("Landed");
-        }
-        _isJumping = false;
-    }
-
-    private void CheckIfJumped()
+    // checks for player jump, and tests if their velocity is downwards
+    private void CheckIfJumping()
     {
         if (!_isJumping)
         {
             StartJump?.Invoke();
             Debug.Log("JumpStarted");
         }
+
+        if (_controller.velocity.y > _verticalVelocity && !_isFalling)
+        {
+            StartFall?.Invoke();
+            _isFalling = true;
+            Debug.Log("FallStarted");
+        }
         _isJumping = true;
     }
 
-    private void CheckIfStartedSprinting()
+
+    // checks for landing and sets jumping flags to false
+    private void CheckIfLanded()
     {
-        if(!_isSprinting)
+        if(_isJumping)
         {
-            StartSprint?.Invoke();
+            Land?.Invoke();
+            StartCoroutine(LandRoutine());
         }
-        _isSprinting = true;
+        _isJumping = false;
+        _isFalling = false;
     }
 
-    private void CheckIfstoppedSprinting()
-    {
-        if (!_isSprinting)
-        {
-            StopSprint?.Invoke();
-        }
-        _isSprinting = true;
-    }
-
+    // tests for ground using spherecasts
+    // TODO this could use a little more fine tuning for slopes
     bool Grounded()
     {
-        return Physics.Raycast(_controller.center, Vector3.down, _controller.height / 2 + 0.3f);
+        RaycastHit hit;
+        return Physics.SphereCast(transform.position + _controller.center, _controller.height/2, -transform.up, out hit, 0.2f);
+    }
+
+    // this coroutine is used to avoid an extra reference to the animator -- runs for approximately the length of the land animation
+    IEnumerator LandRoutine()
+    {
+        // sets player's speed to slow for the duration of the land animation to make it feel more natural
+        float temp = _speed;
+        _speed = _slowSpeed;
+        yield return new WaitForSeconds(_landAnimationTime);
+        _speed = temp;
+
+
+        // sets current animation event based on run flag
+        if (_isRunning)
+        {
+            if (_sprint)
+                ApplySprint();
+            else
+                StartRunning?.Invoke();
+        }
+
+        else
+            Idle?.Invoke();
     }
 }
