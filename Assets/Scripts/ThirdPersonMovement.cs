@@ -21,7 +21,6 @@ public class ThirdPersonMovement : MonoBehaviour
     [SerializeField] float _turnSmoothTime = 0.1f;
     [SerializeField] float _landAnimationTime = 0.467f;
 
-
     // fields for physics calculation
     private float _turnSmoothVelocity;
     private float _verticalVelocity;
@@ -39,7 +38,6 @@ public class ThirdPersonMovement : MonoBehaviour
     Transform _camTransform;
     
 
-
     // caching
     private void Awake()
     {
@@ -47,6 +45,7 @@ public class ThirdPersonMovement : MonoBehaviour
         _controller = GetComponent<CharacterController>();
         _camTransform = Camera.main.transform;
     }
+
 
     #region subscriptions
     private void OnEnable()
@@ -86,9 +85,11 @@ public class ThirdPersonMovement : MonoBehaviour
             // passing in x, then z adjusts for the forward direction being positive z here
             float targetAngle = Mathf.Atan2(direction.x, direction.z) * Mathf.Rad2Deg + _camTransform.eulerAngles.y;
 
+
             // SmoothDampAngle adjusts and smooths the turn
             float angle = Mathf.SmoothDampAngle(transform.eulerAngles.y, targetAngle, ref _turnSmoothVelocity, _turnSmoothTime);
             transform.rotation = Quaternion.Euler(0f, angle, 0f);
+
 
             // adjusts the direction of movement by applying the forward direction to the player's quaternion rotation of targetAngle
             Vector3 moveDirection = Quaternion.Euler(0f, targetAngle, 0f) * Vector3.forward;
@@ -102,33 +103,44 @@ public class ThirdPersonMovement : MonoBehaviour
         
     }
 
+
     // accepts the raw input axis for jump (can be either 1 or 0)
     private void ApplyJump(float jumpAxis)
     {
-        // resets velocity for each setp
+        
         if (Grounded())
         {
+            // resets velocity for each step
+            _verticalVelocity = 0;
+
             CheckIfLanded();
 
             // if jumpAxis is positive (pressed), starts jump)
             if (jumpAxis > 0)
             {
+                
                 _verticalVelocity = _jumpSpeed;
             }
         }
         else
         {
-            _verticalVelocity += Physics.gravity.y * Time.deltaTime;
+            // applies gravity as the player jumps -- also applies a multiplier on downwards fall
+            _verticalVelocity += Physics.gravity.y * Time.deltaTime * (_verticalVelocity < 0 ? _fallGravityMultiplier : 1);
 
-            // applies slightly higher gravity on downward fall to feel a little more weighty
-            if (_controller.velocity.y < 0)
-                _verticalVelocity += Physics.gravity.y * (_fallGravityMultiplier - 1) * Time.deltaTime;
             CheckIfJumping();
         }
 
+        // puts movement into a Vector3 to use .Move
         Vector3 playerMovement = new Vector3(0, _verticalVelocity, 0);
         _controller.Move(playerMovement * Time.deltaTime);
+
+        
     }
+
+
+    // SECTION: Basic state scripts to coordinate animation events
+    // TODO offload this to be a more effective state machine and declutter the controller
+    // TODO most of this checks are basically identical, perhaps make this a method call with params? either or
 
 
     // applies sprint
@@ -140,6 +152,7 @@ public class ThirdPersonMovement : MonoBehaviour
 
         Debug.Log("Sprint: " + _sprint);
 
+        // sends event
         if (Grounded() && _isRunning)
         {        
             StartSprint?.Invoke();
@@ -147,20 +160,25 @@ public class ThirdPersonMovement : MonoBehaviour
         }
     }
 
+    // cancels sprint by setting back flag, and resumes running if still grounded
     private void CancelSprint()
     {
         _sprint = false;
+
         if (Grounded() && _isRunning)
             StartRunning?.Invoke();
+
         _speed = _sprintSpeed / _sprintModifier;
     }
 
 
-    // TODO most of this checks are basically identical, perhaps make this a method call with params?
+    // sets flag for player movement
     private void CheckIfStartedMoving()
     {
+        // movement animation events can't be activated when jumping to prevent overlap with jump animations
         if (!_isRunning && !_isJumping)
         {
+            // this is set here because the sprint event depends on the player being in running state
             _isRunning = true;
             if (_sprint)
             {
@@ -174,8 +192,12 @@ public class ThirdPersonMovement : MonoBehaviour
                 Debug.Log("Running");
             }
         }
+
+        _isRunning = true;
     }
 
+
+    // reverts flag for player movement
     private void CheckIfStoppedMoving()
     {
         if (_isRunning && !_isJumping)
@@ -187,7 +209,8 @@ public class ThirdPersonMovement : MonoBehaviour
         _isRunning = false;
     }
 
-    // checks for player jump, and tests if their velocity is downwards
+
+    // checks for player jump, and tests if their velocity is negative to also apply falling state
     private void CheckIfJumping()
     {
         if (!_isJumping)
@@ -196,7 +219,7 @@ public class ThirdPersonMovement : MonoBehaviour
             Debug.Log("JumpStarted");
         }
 
-        if (_controller.velocity.y > _verticalVelocity && !_isFalling)
+        if (_verticalVelocity < 0 && !_isFalling)
         {
             StartFall?.Invoke();
             _isFalling = true;
@@ -218,13 +241,23 @@ public class ThirdPersonMovement : MonoBehaviour
         _isFalling = false;
     }
 
+
     // tests for ground using spherecasts
     // TODO this could use a little more fine tuning for slopes
     bool Grounded()
     {
         RaycastHit hit;
-        return Physics.SphereCast(transform.position + _controller.center, _controller.height/2, -transform.up, out hit, 0.2f);
+        if (Physics.SphereCast(transform.position + _controller.center, _controller.height / 2, -transform.up, out hit, 0.1f))
+        {
+            if (hit.collider.gameObject.layer == LayerMask.NameToLayer("Ground"))
+                return true;
+            else
+                return false;
+        }
+        else
+            return false;
     }
+
 
     // this coroutine is used to avoid an extra reference to the animator -- runs for approximately the length of the land animation
     IEnumerator LandRoutine()
@@ -237,15 +270,18 @@ public class ThirdPersonMovement : MonoBehaviour
 
 
         // sets current animation event based on run flag
-        if (_isRunning)
+        if(!_isJumping)
         {
-            if (_sprint)
-                ApplySprint();
-            else
-                StartRunning?.Invoke();
-        }
+            if (_isRunning)
+            {
+                if (_sprint)
+                    ApplySprint();
+                else
+                    StartRunning?.Invoke();
+            }
 
-        else
-            Idle?.Invoke();
+            else
+                Idle?.Invoke();
+        }
     }
 }

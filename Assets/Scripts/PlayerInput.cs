@@ -1,6 +1,7 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Events;
 using System;
 
 public class PlayerInput : MonoBehaviour
@@ -9,12 +10,16 @@ public class PlayerInput : MonoBehaviour
     public event Action<float> Jump = delegate { };
     public event Action StartSprint = delegate { };
     public event Action StopSprint = delegate { };
+    public event Action LeftClick = delegate { };
+    public event Action<Transform> RightClick = delegate { };
 
     private void Update()
     {
         MoveInput();
         JumpInput();
         SprintInput();
+        Mouse0Input();
+        Mouse1Input();
     }
 
     // gets keyboard axes movement and sends event
@@ -40,5 +45,17 @@ public class PlayerInput : MonoBehaviour
             StartSprint?.Invoke();
         if (Input.GetButtonUp("Sprint"))
             StopSprint?.Invoke();
+    }
+
+    public void Mouse0Input()
+    {
+        if (Input.GetKeyDown(KeyCode.Mouse0))
+            LeftClick?.Invoke();
+    }
+
+    public void Mouse1Input()
+    {
+        if (Input.GetKeyDown(KeyCode.Mouse1))
+            RightClick?.Invoke(transform);
     }
 }
