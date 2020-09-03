@@ -13,17 +13,19 @@ public class PlayerCharacterAnimator : MonoBehaviour
     const string FallState = "Falling";
     const string LandState = "Land";
     const string SprintState = "Sprint";
+    const string RadarState = "Radar";
 
     // animator field
     Animator _animator = null;
     ThirdPersonMovement _movementScript = null;
+    AbilityLoadout _abilityScript = null;
 
     // caching
     private void Awake()
     {
         _animator = GetComponent<Animator>();
         _movementScript = GetComponent<ThirdPersonMovement>(); // some workflows might have the animator as a child object, so 
-                                                               // keep in mind that this might be filled as an inspector reference
+        _abilityScript = GetComponent<AbilityLoadout>();       // keep in mind that this might be filled as an inspector reference
     }
 
     #region subscriptions
@@ -35,6 +37,7 @@ public class PlayerCharacterAnimator : MonoBehaviour
         _movementScript.StartFall += OnStartFalling;
         _movementScript.Land += OnLand;
         _movementScript.StartSprint += OnSprint;
+        _abilityScript.AbilityStart += OnAbility;
     }
 
     private void OnDisable()
@@ -45,6 +48,7 @@ public class PlayerCharacterAnimator : MonoBehaviour
         _movementScript.StartFall -= OnStartFalling;
         _movementScript.Land -= OnLand;
         _movementScript.StartSprint -= OnSprint;
+        _abilityScript.AbilityStart -= OnAbility;
     }
     #endregion
 
@@ -79,5 +83,12 @@ public class PlayerCharacterAnimator : MonoBehaviour
     {
         _animator.CrossFadeInFixedTime(SprintState, .2f);
         Debug.Log("Sprinting");
+    }
+
+
+    // don't really know the most effective way to switch out abilites by context
+    public void OnAbility()
+    {
+        _animator.CrossFadeInFixedTime(RadarState, .2f);
     }
 }

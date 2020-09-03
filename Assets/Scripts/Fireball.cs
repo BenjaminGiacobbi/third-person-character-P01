@@ -6,7 +6,6 @@ using UnityEngine;
 public class Fireball : Ability
 {
     [SerializeField] GameObject _fireballProjectile = null;
-    [SerializeField] float _destroyTime = 3.5f;
 
     public override void Use(Transform origin, Transform target)
     {
@@ -20,8 +19,13 @@ public class Fireball : Ability
 
             spawnedFireball.transform.LookAt(target);
 
-            Destroy(spawnedFireball, _destroyTime);
+            Destroy(spawnedFireball, abilityDuration);
         }
+
+    }
+
+    public override void Reset()
+    {
 
     }
 }

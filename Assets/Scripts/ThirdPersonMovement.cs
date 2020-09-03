@@ -36,6 +36,7 @@ public class ThirdPersonMovement : MonoBehaviour
     PlayerInput _playerInput;
     CharacterController _controller;
     Transform _camTransform;
+    AbilityLoadout _abilityScript;
     
 
     // caching
@@ -43,6 +44,7 @@ public class ThirdPersonMovement : MonoBehaviour
     {
         _playerInput = GetComponent<PlayerInput>();
         _controller = GetComponent<CharacterController>();
+        _abilityScript = GetComponent<AbilityLoadout>();
         _camTransform = Camera.main.transform;
     }
 
@@ -102,7 +104,6 @@ public class ThirdPersonMovement : MonoBehaviour
         }
         
     }
-
 
     // accepts the raw input axis for jump (can be either 1 or 0)
     private void ApplyJump(float jumpAxis)

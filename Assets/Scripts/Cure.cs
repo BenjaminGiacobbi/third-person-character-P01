@@ -19,4 +19,9 @@ public class Cure : Ability
         Debug.Log("Cure " + _healAmount + " on " + target.gameObject.name);
         target.GetComponent<Health>()?.Heal(_healAmount);
     }
+
+    public override void Reset()
+    {
+
+    }
 }

@@ -8,12 +8,16 @@ public class CameraRotate : MonoBehaviour
     public bool ManualCamera { get; private set; }
 
     [SerializeField] float _cameraRotateSpeed = 5f;
+    [SerializeField] CinemachineVirtualCameraBase _vcam;
+    [SerializeField] PlayerInput _inputScript;
 
-    CinemachineVirtualCameraBase vcamManual;
+    Transform _camTransform;
+    
 
+    // caching
     private void Awake()
     {
-        vcamManual = GetComponent<CinemachineVirtualCameraBase>();
+        _camTransform = Camera.main.transform;
     }
 
     private void Update()
@@ -22,34 +26,42 @@ public class CameraRotate : MonoBehaviour
         {
             if(Input.mousePosition.x < Screen.width/2)
             {
-                // adjust x axis value on manual camera positive
+                Debug.Log(Input.mousePosition.x);
+                _camTransform.eulerAngles += new Vector3(_cameraRotateSpeed * Time.deltaTime, 0, 0);
+                Debug.Log(_camTransform.eulerAngles);
             }
             else
             {
-                // adjust x axis value on manual camera negative
+                _camTransform.eulerAngles -= new Vector3(_cameraRotateSpeed * Time.deltaTime, 0, 0);
             }
 
             if(Input.mousePosition.y < Screen.height / 2)
             {
-                // adjust y axis value on manual camera positive
+                _camTransform.eulerAngles += new Vector3(0, _cameraRotateSpeed * Time.deltaTime, 0);
             }
             else
             {
-                // adjust y axis value on manual camera negative
+                _camTransform.eulerAngles -= new Vector3(0, _cameraRotateSpeed * Time.deltaTime, 0);
             }
 
         }
     }
 
     // these two are meant to be hooked into events, but the event system can change cameras automatically?
-    public void SwitchToManual(CinemachineVirtualCameraBase vcamFreelook)
+    public void CameraSwitch(float switchAxis)
     {
-        // set manual as live camera
-
-        // give manual the last transform of freelook -- this is automatically handled by inherit tranform on in the editor I think
-
-        // set Manual bool true
-
+        if (switchAxis > 0)
+        {
+            _vcam.enabled = false;
+            ManualCamera = true;
+        }
+            
+        else if (switchAxis == 0)
+        {
+            _vcam.enabled = true;
+            ManualCamera = false;
+        }
+            
     }
 
     public void SwitchToFree()
