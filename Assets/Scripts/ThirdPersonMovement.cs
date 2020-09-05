@@ -56,6 +56,8 @@ public class ThirdPersonMovement : MonoBehaviour
         _playerInput.Jump += ApplyJump;
         _playerInput.StartSprint += ApplySprint;
         _playerInput.StopSprint += CancelSprint;
+        _abilityScript.UseAbilityStart += StopPlayerControl;
+        _abilityScript.UseAbilityStop += StartPlayerControl;
     }
 
     private void OnDisable()
@@ -64,6 +66,8 @@ public class ThirdPersonMovement : MonoBehaviour
         _playerInput.Jump -= ApplyJump;
         _playerInput.StartSprint -= ApplySprint;
         _playerInput.StopSprint -= CancelSprint;
+        _abilityScript.UseAbilityStart -= StopPlayerControl;
+        _abilityScript.UseAbilityStop -= StartPlayerControl;
     }
     #endregion
 
@@ -73,6 +77,24 @@ public class ThirdPersonMovement : MonoBehaviour
     {
         Idle?.Invoke();
         _sprintSpeed = _speed * _sprintModifier;
+    }
+
+
+    // these can be used to activate or deactivate player movement as they link to the
+    private void StopPlayerControl()
+    {
+        _playerInput.Move -= ApplyMovement;
+        _playerInput.Jump -= ApplyJump;
+        _playerInput.StartSprint -= ApplySprint;
+        _playerInput.StopSprint -= CancelSprint;
+    }
+
+    private void StartPlayerControl()
+    {
+        _playerInput.Move += ApplyMovement;
+        _playerInput.Jump += ApplyJump;
+        _playerInput.StartSprint += ApplySprint;
+        _playerInput.StopSprint += CancelSprint;
     }
 
 

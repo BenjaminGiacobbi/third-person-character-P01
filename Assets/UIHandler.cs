@@ -24,11 +24,4 @@ public class UIHandler : MonoBehaviour
     {
         
     }
-
-
-    public void DrawObject(Transform followTransform, GameObject prefab)
-    {
-        GameObject newObject = Instantiate(prefab, _UIcanvas.transform);
-        newObject.GetComponent<RadarObject>().Init(followTransform);
-    }
 }

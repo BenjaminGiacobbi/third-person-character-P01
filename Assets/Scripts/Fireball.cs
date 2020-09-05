@@ -7,6 +7,12 @@ public class Fireball : Ability
 {
     [SerializeField] GameObject _fireballProjectile = null;
 
+    // create an object pooling system here
+    public override void Setup()
+    {
+        throw new System.NotImplementedException();
+    }
+
     public override void Use(Transform origin, Transform target)
     {
         if (target == null)
