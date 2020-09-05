@@ -10,7 +10,7 @@ public class Radar : Ability
     [SerializeField] float _radarRange = 20f;
     [SerializeField] int _poolSize = 20;
     Canvas _radarCanvas = null;
-    Camera _mainCam = null;
+    Camera _activeCam = null;
     List<GameObject> _objectList;
 
 
@@ -20,8 +20,8 @@ public class Radar : Ability
         // this is required because the list will otherwise accumulate items
         _objectList.Clear();
 
-        _mainCam = Camera.main;
-        _radarCanvas = FindObjectOfType<Canvas>();
+        _activeCam = Camera.main;
+        _radarCanvas = FindObjectOfType<Canvas>();      // NEED A WAY TO FIND THIS CANVAS because scriptable object doesn't have monobehavior
 
         // populates object pool
         for (int i = 0; i < _poolSize; i++)
@@ -30,14 +30,12 @@ public class Radar : Ability
             newObject.gameObject.SetActive(false);
             _objectList.Add(newObject);
         }
-        Debug.Log(_objectList.Count);
     }
 
     public override void Use(Transform origin, Transform target)
     {
-        Debug.Log(_objectList.Count);
         // get enemy colliders around forward camera
-        Collider[] colliders = Physics.OverlapSphere(_mainCam.transform.position, _radarRange);
+        Collider[] colliders = Physics.OverlapSphere(_activeCam.transform.position, _radarRange);
 
 
         // search that found colliders are within the camera's view and draws radar prefab if something is in the way
@@ -45,25 +43,21 @@ public class Radar : Ability
         {
             // TODO add some control over searchable object types, maybe make an enum or something as part of the scriptable object
             // make this whole thing be a function as well?
-            Vector3 targetPoint = _mainCam.WorldToViewportPoint(colliders[i].transform.position);
+            Vector3 targetPoint = _activeCam.WorldToViewportPoint(colliders[i].transform.position);
             if (targetPoint.x > 0 && targetPoint.z > 0 && targetPoint.y > 0 && targetPoint.x < 1 && targetPoint.y < 1 &&
                 colliders[i].gameObject.layer == LayerMask.NameToLayer("Enemy") &&
-                !RaycastToObject(colliders[i].transform.position, _mainCam.transform.position, LayerMask.NameToLayer("Enemy")))
+                !RaycastToObject(colliders[i].transform.position, _activeCam.transform.position, LayerMask.NameToLayer("Enemy")))
             
             {
-                _objectList[j].GetComponent<RadarObject>().SetTransform(colliders[i].transform);
-                _objectList[j].SetActive(true);
+                _objectList[j].GetComponent<RadarObject>().ActivateObject(colliders[i].transform, duration);
                 j++; 
             }
         }
-    }
 
-    public override void Reset()
-    {
-        foreach (GameObject activeObject in _objectList)
+        // plays audio feedback if at least one of the radar items is active
+        if(_objectList[0].activeSelf)
         {
-            activeObject.SetActive(false);
-            activeObject.GetComponent<RadarObject>().SetTransform(null);
+            AudioHelper.PlayClip2D(activeSound, 0.5f);
         }
     }
 

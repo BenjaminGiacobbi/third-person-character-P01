@@ -6,6 +6,7 @@ public class RadarObject : MonoBehaviour
 {
     Camera _activeCamera;
     Transform _followTransform;
+    float _timer;
 
 
     // caching
@@ -15,9 +16,11 @@ public class RadarObject : MonoBehaviour
     }
 
 
-    public void SetTransform(Transform transform)
+    public void ActivateObject(Transform transform, float time)
     {
         _followTransform = transform;
+        gameObject.SetActive(true);
+        _timer = time;
     }
 
 
@@ -26,5 +29,20 @@ public class RadarObject : MonoBehaviour
     {
         if (_followTransform != null && _activeCamera != null)
             transform.position = _activeCamera.WorldToScreenPoint(_followTransform.position);
+        UpdateTimer();
+    }
+
+
+    private void UpdateTimer()
+    {
+        if(_timer > 0)
+        {
+            _timer -= Time.deltaTime;
+            if (_timer <= 0)
+            {
+                _timer = 0;
+                gameObject.SetActive(false);
+            }     
+        }
     }
 }

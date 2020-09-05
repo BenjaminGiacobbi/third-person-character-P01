@@ -6,8 +6,6 @@ using UnityEngine;
 [RequireComponent(typeof(ThirdPersonMovement))]
 public class PlayerCharacterAnimator : MonoBehaviour
 {
-    [SerializeField] ParticleSystem _radarParticles = null;
-
     // these names are the same as the animation nodes in Mecanim
     const string IdleState = "Idle";
     const string RunState = "Run";
@@ -15,7 +13,7 @@ public class PlayerCharacterAnimator : MonoBehaviour
     const string FallState = "Falling";
     const string LandState = "Land";
     const string SprintState = "Sprint";
-    const string RadarState = "Radar";
+    const string AbilityState = "Ability";
 
     // animator field
     Animator _animator = null;
@@ -39,8 +37,7 @@ public class PlayerCharacterAnimator : MonoBehaviour
         _movementScript.StartFall += OnStartFalling;
         _movementScript.Land += OnLand;
         _movementScript.StartSprint += OnSprint;
-        _abilityScript.UseAbilityStart += OnAbility;
-        _abilityScript.UseAbilityStop += OnIdle;
+        _movementScript.Ability += OnAbility;
     }
 
     private void OnDisable()
@@ -51,8 +48,7 @@ public class PlayerCharacterAnimator : MonoBehaviour
         _movementScript.StartFall -= OnStartFalling;
         _movementScript.Land -= OnLand;
         _movementScript.StartSprint -= OnSprint;
-        _abilityScript.UseAbilityStart -= OnAbility;
-        _abilityScript.UseAbilityStop -= OnIdle;
+        _movementScript.Ability -= OnAbility;
     }
     #endregion
 
@@ -61,8 +57,6 @@ public class PlayerCharacterAnimator : MonoBehaviour
     public void OnIdle()
     {
         _animator.CrossFadeInFixedTime(IdleState, .2f);
-        if(_radarParticles.gameObject.activeSelf)
-            _radarParticles.gameObject.SetActive(false);
     }
 
     public void OnStartRunning()
@@ -88,14 +82,10 @@ public class PlayerCharacterAnimator : MonoBehaviour
     public void OnSprint()
     {
         _animator.CrossFadeInFixedTime(SprintState, .2f);
-        Debug.Log("Sprinting");
     }
 
-
-    // don't really know the most effective way to switch out abilites by context
     public void OnAbility()
     {
-        _animator.CrossFadeInFixedTime(RadarState, .2f);
-        _radarParticles.gameObject.SetActive(true);
+        _animator.CrossFadeInFixedTime(AbilityState, .2f);
     }
 }

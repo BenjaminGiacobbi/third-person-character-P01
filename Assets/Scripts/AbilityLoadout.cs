@@ -5,19 +5,22 @@ using System;
 
 public class AbilityLoadout : MonoBehaviour
 {
+    public Ability EquippedAbility { get { return _defaultAbility; } set { _defaultAbility = value; } }
+    public Transform CurrentTarget { get; private set; }
+
     public event Action UseAbilityStart = delegate { };
     public event Action UseAbilityStop = delegate { };
     public event Action<float> Cooldown = delegate { };
 
+    [SerializeField] ParticleBase _radarParticles = null;
+    [SerializeField] ParticleBase _fireParticles = null;
+    [SerializeField] ParticleBase _cureParticles = null;
     [SerializeField] Ability _defaultAbility = null;
-    [SerializeField] Transform _testTarget = null;
-    public Ability EquippedAbility { get { return _defaultAbility; } set { _defaultAbility = value; } }
-    public Transform CurrentTarget { get; private set; }
+    
 
     PlayerInput _inputScript = null;
-    float _abilityTimer = 0;
     float _cooldownTimer = 0;
-    float _castTimer = 0;
+    float _cooldownMinusCast = 0;
 
 
     // caching -- this assumed it's on the same object, might need to fix
@@ -30,14 +33,12 @@ public class AbilityLoadout : MonoBehaviour
     #region subscriptions
     private void OnEnable()
     {
-        _inputScript.LeftClick += UseEquippedAbility;
-        _inputScript.RightClick += SetTarget;
+        _inputScript.LeftClick += StartAbility;
     }
 
     private void OnDisable()
     {
-        _inputScript.LeftClick -= UseEquippedAbility;
-        _inputScript.RightClick -= SetTarget;
+        _inputScript.LeftClick -= StartAbility;
     }
     #endregion
 
@@ -49,20 +50,14 @@ public class AbilityLoadout : MonoBehaviour
         if (_defaultAbility != null)
         {
             EquipAbility(_defaultAbility);
-        }   
+        }
+        CurrentTarget = transform;
     }
 
     private void Update()
     {
         UpdateAbilityState();
     }
-
-    // TODO consider moving this to another script
-    public void SetTarget(Transform newTarget)
-    {
-        CurrentTarget = _testTarget;
-    }
-
 
     // sets the ability property and does any necessary behavior for making the ability active
     public void EquipAbility(Ability ability)
@@ -73,52 +68,66 @@ public class AbilityLoadout : MonoBehaviour
 
 
    // self explanatory ig
-    public void UseEquippedAbility()
+    public void StartAbility()
     {
         if (_cooldownTimer == 0)
         {
-            // this currently repeats the transform for the target, not preferred
-            EquippedAbility.Use(transform, CurrentTarget);
+            AbilityFeedback();
 
-            
-            _cooldownTimer = EquippedAbility.abilityCooldown;
-            _abilityTimer = EquippedAbility.abilityDuration;
-            _castTimer = EquippedAbility.abilityCastTime;
+            // sets timers
+            _cooldownMinusCast = EquippedAbility.cooldown - EquippedAbility.castTime;
+            _cooldownTimer = EquippedAbility.cooldown;
+
             UseAbilityStart?.Invoke();
         }
     }
 
 
-    // TODO this is super messy, fix
+    // TODO I do not like this, super messy, fix
     void UpdateAbilityState()
     {
         // timers
         if(_cooldownTimer > 0)
         {
-            _cooldownTimer -= Time.deltaTime;
-            if (_cooldownTimer <= 0)
-                _cooldownTimer = 0;
-        }
-
-        if (_abilityTimer > 0)
-        {
-            _abilityTimer -= Time.deltaTime;
-            if (_abilityTimer <= 0)
+            if (_cooldownTimer > _cooldownMinusCast)
             {
-                _abilityTimer = 0;
-                EquippedAbility.Reset();
-            }
-                
-        }
+                _cooldownTimer -= Time.deltaTime;
+                if (_cooldownTimer <= _cooldownMinusCast)
+                {
+                    _cooldownTimer = _cooldownMinusCast;
+                    UseAbilityStop?.Invoke();
 
-        if(_castTimer > 0)
-        {
-            _castTimer -= Time.deltaTime;
-            if(_castTimer <= 0)
-            {
-                _castTimer = 0;
-                UseAbilityStop?.Invoke();
+                    // this currently repeats the transform for the target, not preferred
+                    EquippedAbility.Use(transform, CurrentTarget);
+                }
             }
+            else if (_cooldownTimer <= _cooldownMinusCast)
+            {
+                _cooldownTimer -= Time.deltaTime;
+                if (_cooldownTimer <= 0)
+                    _cooldownTimer = 0;
+            }
+
+            Cooldown?.Invoke(_cooldownTimer);
+        }
+        
+    }
+
+
+    // particles use a switch statement because it'd be less wasteful to have particles active on the player than instantiate prefabs
+    void AbilityFeedback()
+    {
+        switch (EquippedAbility.abilityName)
+        {
+            case "Radar":
+                _radarParticles.PlayComponents();
+                break;
+            case "Cure":
+                _cureParticles.PlayComponents();
+                break;
+            case "Fireball":
+                _fireParticles.PlayComponents();
+                break;
         }
     }
 

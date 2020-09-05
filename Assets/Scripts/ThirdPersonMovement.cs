@@ -12,6 +12,7 @@ public class ThirdPersonMovement : MonoBehaviour
     public event Action StartFall = delegate { };
     public event Action StartSprint = delegate { };
     public event Action Land = delegate { };
+    public event Action Ability = delegate { };
 
     [SerializeField] float _speed = 6f;
     [SerializeField] float _slowSpeed = 2f;
@@ -27,10 +28,10 @@ public class ThirdPersonMovement : MonoBehaviour
     private float _sprintSpeed;
 
     // character state flags
-    private bool _isRunning = false;
-    private bool _isJumping = false;
-    private bool _isFalling = false;
-    private bool _sprint = false;
+    public bool IsRunning { get; private set; } = false;
+    public bool IsJumping { get; private set; } = false;
+    public bool IsFalling { get; private set; } = false;
+    public bool IsSprinting { get; private set; } = false;
 
     // references
     PlayerInput _playerInput;
@@ -56,8 +57,8 @@ public class ThirdPersonMovement : MonoBehaviour
         _playerInput.Jump += ApplyJump;
         _playerInput.StartSprint += ApplySprint;
         _playerInput.StopSprint += CancelSprint;
-        _abilityScript.UseAbilityStart += StopPlayerControl;
-        _abilityScript.UseAbilityStop += StartPlayerControl;
+        _abilityScript.UseAbilityStart += OnAbilityBegin;
+        _abilityScript.UseAbilityStop += OnAbilityComplete;
     }
 
     private void OnDisable()
@@ -66,8 +67,8 @@ public class ThirdPersonMovement : MonoBehaviour
         _playerInput.Jump -= ApplyJump;
         _playerInput.StartSprint -= ApplySprint;
         _playerInput.StopSprint -= CancelSprint;
-        _abilityScript.UseAbilityStart -= StopPlayerControl;
-        _abilityScript.UseAbilityStop -= StartPlayerControl;
+        _abilityScript.UseAbilityStart -= OnAbilityBegin;
+        _abilityScript.UseAbilityStop -= OnAbilityComplete;
     }
     #endregion
 
@@ -81,16 +82,35 @@ public class ThirdPersonMovement : MonoBehaviour
 
 
     // these can be used to activate or deactivate player movement as they link to the
-    private void StopPlayerControl()
+    private void OnAbilityBegin()
     {
+        // TODO sprint interferes with the abiltiy use animation if sprint is released
+        // Canceling sprint by default is a bandaid solution but it means if the player is still holding the sprint button they have to press it again 
+        CancelSprint(); 
+
+
         _playerInput.Move -= ApplyMovement;
         _playerInput.Jump -= ApplyJump;
         _playerInput.StartSprint -= ApplySprint;
         _playerInput.StopSprint -= CancelSprint;
+        Ability.Invoke();
     }
 
-    private void StartPlayerControl()
+    private void OnAbilityComplete()
     {
+        // informs saved player state from before control was removed
+        if (IsFalling)
+            StartFall?.Invoke();
+        else if (IsJumping)
+            StartJump?.Invoke();
+        else if (IsSprinting)
+            StartSprint.Invoke();
+        else if (IsRunning)
+            StartRunning?.Invoke();
+        else
+            Idle?.Invoke();
+
+        // returns player control
         _playerInput.Move += ApplyMovement;
         _playerInput.Jump += ApplyJump;
         _playerInput.StartSprint += ApplySprint;
@@ -161,22 +181,15 @@ public class ThirdPersonMovement : MonoBehaviour
     }
 
 
-    // SECTION: Basic state scripts to coordinate animation events
-    // TODO offload this to be a more effective state machine and declutter the controller
-    // TODO most of this checks are basically identical, perhaps make this a method call with params? either or
-
-
     // applies sprint
     private void ApplySprint()
     {
         // sets sprint flag regardless of grounding so state can be updated upon landing
-        if(!_sprint)
-            _sprint = true;
-
-        Debug.Log("Sprint: " + _sprint);
+        if(!IsSprinting)
+            IsSprinting = true;
 
         // sends event
-        if (Grounded() && _isRunning)
+        if (Grounded() && IsRunning)
         {        
             StartSprint?.Invoke();
             _speed = _sprintSpeed;
@@ -186,9 +199,9 @@ public class ThirdPersonMovement : MonoBehaviour
     // cancels sprint by setting back flag, and resumes running if still grounded
     private void CancelSprint()
     {
-        _sprint = false;
+        IsSprinting = false;
 
-        if (Grounded() && _isRunning)
+        if (Grounded() && IsRunning)
             StartRunning?.Invoke();
 
         _speed = _sprintSpeed / _sprintModifier;
@@ -199,69 +212,57 @@ public class ThirdPersonMovement : MonoBehaviour
     private void CheckIfStartedMoving()
     {
         // movement animation events can't be activated when jumping to prevent overlap with jump animations
-        if (!_isRunning && !_isJumping)
+        if (!IsRunning && !IsJumping)
         {
             // this is set here because the sprint event depends on the player being in running state
-            _isRunning = true;
-            if (_sprint)
-            {
-                
+            IsRunning = true;
+            if (IsSprinting)
                 ApplySprint();
-                Debug.Log("Sprinting");
-            }
             else
-            {
                 StartRunning?.Invoke();
-                Debug.Log("Running");
-            }
         }
 
-        _isRunning = true;
+        IsRunning = true;
     }
 
 
     // reverts flag for player movement
     private void CheckIfStoppedMoving()
     {
-        if (_isRunning && !_isJumping)
-        {
-            // our velocity said we stopped moving but previously were, so set _isMoving
-            Idle?.Invoke();
-            Debug.Log("Stopped");
-        }
-        _isRunning = false;
+        if (IsRunning && !IsJumping)
+            Idle?.Invoke(); // our velocity said we stopped moving but previously were, so set _isMoving
+
+
+        IsRunning = false;
     }
 
 
     // checks for player jump, and tests if their velocity is negative to also apply falling state
     private void CheckIfJumping()
     {
-        if (!_isJumping)
-        {
+        if (!IsJumping)
             StartJump?.Invoke();
-            Debug.Log("JumpStarted");
-        }
 
-        if (_verticalVelocity < 0 && !_isFalling)
+        if (_verticalVelocity < 0 && !IsFalling)
         {
             StartFall?.Invoke();
-            _isFalling = true;
-            Debug.Log("FallStarted");
+            IsFalling = true;
         }
-        _isJumping = true;
+
+        IsJumping = true;
     }
 
 
     // checks for landing and sets jumping flags to false
     private void CheckIfLanded()
     {
-        if(_isJumping)
+        if(IsJumping)
         {
             Land?.Invoke();
             StartCoroutine(LandRoutine());
         }
-        _isJumping = false;
-        _isFalling = false;
+        IsJumping = false;
+        IsFalling = false;
     }
 
 
@@ -293,11 +294,11 @@ public class ThirdPersonMovement : MonoBehaviour
 
 
         // sets current animation event based on run flag
-        if(!_isJumping)
+        if(!IsJumping)
         {
-            if (_isRunning)
+            if (IsRunning)
             {
-                if (_sprint)
+                if (IsSprinting)
                     ApplySprint();
                 else
                     StartRunning?.Invoke();

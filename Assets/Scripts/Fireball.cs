@@ -25,13 +25,8 @@ public class Fireball : Ability
 
             spawnedFireball.transform.LookAt(target);
 
-            Destroy(spawnedFireball, abilityDuration);
+            Destroy(spawnedFireball, duration);
         }
-
-    }
-
-    public override void Reset()
-    {
 
     }
 }

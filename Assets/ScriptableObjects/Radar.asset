@@ -12,9 +12,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 928c27c8c8c32e040b44b3d05293b353, type: 3}
   m_Name: Radar
   m_EditorClassIdentifier: 
-  abilityCastTime: 1.5
-  abilityDuration: 5
-  abilityCooldown: 15
+  abilityName: Radar
+  castTime: 1.5
+  duration: 5
+  cooldown: 15
+  activeSound: {fileID: 8300000, guid: 172b8af8de8c2274c807cfc476ac3f90, type: 3}
+  activeParticles: {fileID: 5802925089817607633, guid: b0748991c69c4834f88553282b4077f9,
+    type: 3}
   _enemyRadarPrefab: {fileID: 7868688531836899775, guid: 9e19c8648ec08c841b95e354bce88350,
     type: 3}
   _radarRange: 50

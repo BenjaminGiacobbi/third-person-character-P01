@@ -7,15 +7,12 @@ public abstract class Ability : ScriptableObject
 {
     // public enum AbilityType { Continue, Single };
     // public AbilityType type;
-    public float abilityCastTime;
-    public float abilityDuration;
-    public float abilityCooldown;
+    public string abilityName;
+    public float castTime;
+    public float duration;
+    public float cooldown;
+    public AudioClip activeSound;
 
     public abstract void Setup();
-
-    public abstract void Use(Transform origin, Transform target);
-
-    public abstract void Reset();
-
-    
+    public abstract void Use(Transform origin, Transform target);   
 }
