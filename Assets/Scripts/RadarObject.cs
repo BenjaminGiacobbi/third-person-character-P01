@@ -11,7 +11,6 @@ public class RadarObject : MonoBehaviour
     [SerializeField] float _fadeSpeed = 5f;
     [SerializeField] float _distanceFloat = 30f;
     [SerializeField] float _flashTime = 0.2f;
-    [SerializeField] Image _defaultImage = null;
     [SerializeField] Image _flashImage = null;
 
 
@@ -24,6 +23,7 @@ public class RadarObject : MonoBehaviour
     CanvasGroup _canvasGroup;
     CanvasRenderer _childRenderer;
     RectTransform _rectTransform;
+
 
     Coroutine _fadeRoutine = null;
     Coroutine _flashRoutine = null;
@@ -48,6 +48,7 @@ public class RadarObject : MonoBehaviour
         _followTransform = objectTransform;
         _playerTransform = playerTransform;
         gameObject.SetActive(true);
+
 
         if (_fadeRoutine == null)
             _fadeRoutine = StartCoroutine(FadeOutCycle(lifetime));
@@ -87,12 +88,12 @@ public class RadarObject : MonoBehaviour
         }
 
         _canvasGroup.alpha = _startingOpacity;
-
         gameObject.SetActive(false);
-
         _fadeRoutine = null;
     }
 
+
+    // flashes the object for a short time
     IEnumerator FlashCycle()
     {
         float timer = 0;

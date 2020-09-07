@@ -13,6 +13,8 @@ MonoBehaviour:
   m_Name: Cure
   m_EditorClassIdentifier: 
   abilityName: Cure
+  abilityColor: {r: 0.61960787, g: 0.8627451, b: 0.23529412, a: 1}
+  abilitySprite: {fileID: 21300000, guid: 6116dce2a60d9d34382bc9f8715751e5, type: 3}
   castTime: 1
   duration: 0
   cooldown: 10

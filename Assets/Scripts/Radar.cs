@@ -1,9 +1,8 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.UI;
 
-[CreateAssetMenu]
+[CreateAssetMenu(fileName = "Radar")]
 public class Radar : Ability
 {
     [SerializeField] GameObject _enemyRadarPrefab = null;
@@ -12,7 +11,7 @@ public class Radar : Ability
     [SerializeField] int _poolSize = 20;
 
     Camera _activeCam = null;
-    List<GameObject> _objectList;
+    List<GameObject> _objectList = new List<GameObject>();
 
 
     public override void Setup()
@@ -20,8 +19,10 @@ public class Radar : Ability
         // this is required because the list will otherwise accumulate items
         _objectList.Clear();
 
+
         _activeCam = Camera.main;
         Canvas newRadarCanvas = Instantiate(_radarCanvas);     // NEED A WAY TO FIND THIS CANVAS because scriptable object doesn't have monobehavior
+
 
         // populates object pool
         for (int i = 0; i < _poolSize; i++)
@@ -30,6 +31,8 @@ public class Radar : Ability
             newObject.gameObject.SetActive(false);
             _objectList.Add(newObject);
         }
+
+        
     }
 
     public override void Use(Transform origin, Transform target)
@@ -53,6 +56,7 @@ public class Radar : Ability
                 j++; 
             }
         }
+
 
         // plays audio feedback if at least one of the radar items is active
         if(_objectList[0].activeSelf)

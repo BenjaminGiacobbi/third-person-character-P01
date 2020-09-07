@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-[CreateAssetMenu]
+[CreateAssetMenu(fileName = "Cure")]
 public class Cure : Ability
 {
     [SerializeField] int _healAmount = 5;

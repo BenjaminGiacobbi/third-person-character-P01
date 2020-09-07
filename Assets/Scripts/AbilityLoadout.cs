@@ -5,19 +5,26 @@ using System;
 
 public class AbilityLoadout : MonoBehaviour
 {
+
     public Ability EquippedAbility { get { return _defaultAbility; } set { _defaultAbility = value; } }
     public Transform CurrentTarget { get; private set; }
 
+
+    public event Action<string, Color, Sprite> SetAbility = delegate { };
     public event Action UseAbilityStart = delegate { };
     public event Action UseAbilityStop = delegate { };
-    public event Action<float> Cooldown = delegate { };
+    public event Action<float, float> Cooldown = delegate { };
+
 
     [SerializeField] Transform _testTarget = null;
     [SerializeField] ParticleBase _radarParticles = null;
     [SerializeField] ParticleBase _fireParticles = null;
     [SerializeField] ParticleBase _cureParticles = null;
     [SerializeField] Ability _defaultAbility = null;
+    [SerializeField] AudioClip _abilityFailSound = null;
 
+
+    AudioSource _failAudioObject = null;
     PlayerInput _inputScript = null;
     float _cooldownTimer = 0;
     float _cooldownMinusCast = 0;
@@ -56,18 +63,26 @@ public class AbilityLoadout : MonoBehaviour
         CurrentTarget = transform;
     }
 
+
     private void Update()
     {
         UpdateAbilityState();
     }
 
+
     // sets the ability property and does any necessary behavior for making the ability active
     public void EquipAbility(Ability ability)
     {
         EquippedAbility = ability;
+        Debug.Log(EquippedAbility);
+
+        SetAbility?.Invoke(EquippedAbility.abilityName, EquippedAbility.abilityColor, EquippedAbility.abilitySprite);
         EquippedAbility.Setup();
+        
     }
 
+
+    // switches the current target - mostly for testing purposes, as it only has the player and one test object
     public void SetTarget()
     {
         if (CurrentTarget == transform)
@@ -78,10 +93,11 @@ public class AbilityLoadout : MonoBehaviour
         Debug.Log("Set Target: " + CurrentTarget.gameObject.name);
     }
 
-   // self explanatory ig
+
+   // begins the ability activation -- actual ability isn't used here, as this is used to coordinate feedback
     public void StartAbility()
     {
-        if (_cooldownTimer == 0)
+        if (_cooldownTimer == 0 && EquippedAbility != null)
         {
             AbilityFeedback();
 
@@ -90,6 +106,12 @@ public class AbilityLoadout : MonoBehaviour
             _cooldownTimer = EquippedAbility.cooldown;
 
             UseAbilityStart?.Invoke();
+        }
+        else
+        {
+            Debug.Log("Ability failed to activate.");
+            if(_failAudioObject == null)
+                _failAudioObject = AudioHelper.PlayClip2D(_abilityFailSound, 0.35f);
         }
     }
 
@@ -100,18 +122,21 @@ public class AbilityLoadout : MonoBehaviour
         // timers
         if(_cooldownTimer > 0)
         {
+            // signals that the cast itself has finished and casts the ability
             if (_cooldownTimer > _cooldownMinusCast)
             {
                 _cooldownTimer -= Time.deltaTime;
+
                 if (_cooldownTimer <= _cooldownMinusCast)
                 {
                     _cooldownTimer = _cooldownMinusCast;
                     UseAbilityStop?.Invoke();
 
-                    // this currently repeats the transform for the target, not preferred
                     EquippedAbility.Use(transform, CurrentTarget);
                 }
             }
+
+            // finished countdown
             else if (_cooldownTimer <= _cooldownMinusCast)
             {
                 _cooldownTimer -= Time.deltaTime;
@@ -122,7 +147,7 @@ public class AbilityLoadout : MonoBehaviour
                     
             }
 
-            Cooldown?.Invoke(_cooldownTimer);
+            Cooldown?.Invoke(_cooldownTimer, EquippedAbility.cooldown);
         }
         
     }

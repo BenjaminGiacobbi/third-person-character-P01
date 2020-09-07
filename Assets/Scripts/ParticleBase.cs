@@ -17,6 +17,7 @@ public class ParticleBase : MonoBehaviour
     }
 
 
+    // method to call particles across whatever's using it
     public void PlayComponents()
     {
         if(_objectParticles != null)

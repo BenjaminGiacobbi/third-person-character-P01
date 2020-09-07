@@ -28,10 +28,12 @@ public class PlayerInput : MonoBehaviour
         float horizontal = Input.GetAxisRaw("Horizontal");
         float vertical = Input.GetAxisRaw("Vertical");
 
+
         // combines as Vector3 and sends
         Vector3 direction = new Vector3(horizontal, 0f, vertical).normalized;
         Move?.Invoke(direction);
     }
+
 
     private void JumpInput()
     {
@@ -39,19 +41,24 @@ public class PlayerInput : MonoBehaviour
         Jump?.Invoke(jumpFloat);
     }
 
+
     private void SprintInput()
     {
         if(Input.GetButtonDown("Sprint"))
             StartSprint?.Invoke();
+
+
         if (Input.GetButtonUp("Sprint"))
             StopSprint?.Invoke();
     }
+
 
     public void Mouse0Input()
     {
         if (Input.GetKeyDown(KeyCode.Mouse0))
             LeftClick?.Invoke();
     }
+
 
     public void Mouse1Input()
     {

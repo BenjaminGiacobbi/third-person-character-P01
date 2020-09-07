@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-[CreateAssetMenu]
+[CreateAssetMenu(fileName = "Fireball")]
 public class Fireball : Ability
 {
     [SerializeField] GameObject _fireballProjectile = null;
@@ -25,8 +25,10 @@ public class Fireball : Ability
             GameObject spawnedFireball = Instantiate
                 (_fireballProjectile, new Vector3(origin.position.x, origin.position.y, origin.position.z), Quaternion.identity);
 
+
             spawnedFireball.transform.LookAt(target);
             Destroy(spawnedFireball, duration);
+
 
             if(startSound != null)
                 AudioHelper.PlayClip2D(startSound, 0.5f);
