@@ -12,11 +12,11 @@ public class AbilityLoadout : MonoBehaviour
     public event Action UseAbilityStop = delegate { };
     public event Action<float> Cooldown = delegate { };
 
+    [SerializeField] Transform _testTarget = null;
     [SerializeField] ParticleBase _radarParticles = null;
     [SerializeField] ParticleBase _fireParticles = null;
     [SerializeField] ParticleBase _cureParticles = null;
     [SerializeField] Ability _defaultAbility = null;
-    
 
     PlayerInput _inputScript = null;
     float _cooldownTimer = 0;
@@ -34,11 +34,13 @@ public class AbilityLoadout : MonoBehaviour
     private void OnEnable()
     {
         _inputScript.LeftClick += StartAbility;
+        _inputScript.RightClick += SetTarget;
     }
 
     private void OnDisable()
     {
         _inputScript.LeftClick -= StartAbility;
+        _inputScript.RightClick += SetTarget;
     }
     #endregion
 
@@ -66,6 +68,15 @@ public class AbilityLoadout : MonoBehaviour
         EquippedAbility.Setup();
     }
 
+    public void SetTarget()
+    {
+        if (CurrentTarget == transform)
+            CurrentTarget = _testTarget;
+        else
+            CurrentTarget = transform;
+
+        Debug.Log("Set Target: " + CurrentTarget.gameObject.name);
+    }
 
    // self explanatory ig
     public void StartAbility()
@@ -105,14 +116,16 @@ public class AbilityLoadout : MonoBehaviour
             {
                 _cooldownTimer -= Time.deltaTime;
                 if (_cooldownTimer <= 0)
+                {
                     _cooldownTimer = 0;
+                }
+                    
             }
 
             Cooldown?.Invoke(_cooldownTimer);
         }
         
     }
-
 
     // particles use a switch statement because it'd be less wasteful to have particles active on the player than instantiate prefabs
     void AbilityFeedback()
@@ -141,6 +154,8 @@ public class AbilityLoadout : MonoBehaviour
         {
             EquipAbility(pickup.HeldAbility);
             pickup.DeactivateObject();
+
+            _cooldownTimer = 0;
         }
     }
 }

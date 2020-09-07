@@ -23,5 +23,6 @@ public class Cure : Ability
             
         Debug.Log("Cure " + _healAmount + " on " + target.gameObject.name);
         target.GetComponent<Health>()?.Heal(_healAmount);
+        AudioHelper.PlayClip2D(startSound, 0.35f);
     }
 }

@@ -7,12 +7,12 @@ using UnityEngine.UI;
 public class Radar : Ability
 {
     [SerializeField] GameObject _enemyRadarPrefab = null;
+    [SerializeField] Canvas _radarCanvas = null;
     [SerializeField] float _radarRange = 20f;
     [SerializeField] int _poolSize = 20;
-    Canvas _radarCanvas = null;
+
     Camera _activeCam = null;
     List<GameObject> _objectList;
-
 
 
     public override void Setup()
@@ -21,12 +21,12 @@ public class Radar : Ability
         _objectList.Clear();
 
         _activeCam = Camera.main;
-        _radarCanvas = FindObjectOfType<Canvas>();      // NEED A WAY TO FIND THIS CANVAS because scriptable object doesn't have monobehavior
+        Canvas newRadarCanvas = Instantiate(_radarCanvas);     // NEED A WAY TO FIND THIS CANVAS because scriptable object doesn't have monobehavior
 
         // populates object pool
         for (int i = 0; i < _poolSize; i++)
         {
-            GameObject newObject = Instantiate(_enemyRadarPrefab, _radarCanvas.transform);
+            GameObject newObject = Instantiate(_enemyRadarPrefab, newRadarCanvas.transform);
             newObject.gameObject.SetActive(false);
             _objectList.Add(newObject);
         }
@@ -49,7 +49,7 @@ public class Radar : Ability
                 !RaycastToObject(colliders[i].transform.position, _activeCam.transform.position, LayerMask.NameToLayer("Enemy")))
             
             {
-                _objectList[j].GetComponent<RadarObject>().ActivateObject(colliders[i].transform, duration);
+                _objectList[j].GetComponent<RadarObject>().ActivateObject(colliders[i].transform, origin, duration);
                 j++; 
             }
         }
@@ -57,13 +57,12 @@ public class Radar : Ability
         // plays audio feedback if at least one of the radar items is active
         if(_objectList[0].activeSelf)
         {
-            AudioHelper.PlayClip2D(activeSound, 0.5f);
+            AudioHelper.PlayClip2D(startSound, 0.35f);
+            AudioHelper.PlayClip2D(activeSound, 0.2f);
         }
     }
 
-
     // tests if there is an object between origin and raycast target
-    // TODO make it ignore the player
     public bool RaycastToObject(Vector3 objectPosition, Vector3 firePosition, LayerMask mask)
     {
         if (Physics.Raycast(firePosition, objectPosition - firePosition, out RaycastHit hit, Vector3.Distance(firePosition, objectPosition)))

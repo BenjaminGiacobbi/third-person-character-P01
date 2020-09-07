@@ -12,6 +12,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 671478059ccd86a47bb7f9e133e847f7, type: 3}
   m_Name: Fireball
   m_EditorClassIdentifier: 
+  abilityName: Fireball
+  castTime: 0.8
+  duration: 3
+  cooldown: 5
+  startSound: {fileID: 8300000, guid: 320386e0e929c824892c630b0e780468, type: 3}
+  activeSound: {fileID: 8300000, guid: 9db665cdc13f19845be44204fefb7949, type: 3}
   _fireballProjectile: {fileID: 2513927597276669579, guid: 67c7502e07613df40a1ac20d697c3b25,
     type: 3}
-  _destroyTime: 3.5
+  _poolSize: 3

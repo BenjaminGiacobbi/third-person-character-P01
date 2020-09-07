@@ -11,7 +11,7 @@ public class PlayerInput : MonoBehaviour
     public event Action StartSprint = delegate { };
     public event Action StopSprint = delegate { };
     public event Action LeftClick = delegate { };
-    public event Action<Transform> RightClick = delegate { };
+    public event Action RightClick = delegate { };
 
     private void Update()
     {
@@ -56,6 +56,6 @@ public class PlayerInput : MonoBehaviour
     public void Mouse1Input()
     {
         if (Input.GetKeyDown(KeyCode.Mouse1))
-            RightClick?.Invoke(transform);
+            RightClick?.Invoke();
     }
 }

@@ -14,17 +14,14 @@ public class ParticleBase : MonoBehaviour
     {
         _objectParticles = GetComponent<ParticleSystem>();
         _objectAudio = GetComponent<AudioSource>();
-
-        Debug.Log(_objectParticles);
     }
 
 
     public void PlayComponents()
     {
-        Debug.Log("Point 1");
         if(_objectParticles != null)
             _objectParticles.Play();
-        if(_objectAudio != null)
+        if(_objectAudio.clip != null)
             AudioHelper.PlayClip2D(_objectAudio.clip, 0.3f);
     }
 }
