@@ -24,7 +24,7 @@ public static class AudioHelper
     }
 
 
-    // attaches a 3D object with a parent transform
+    // attaches a 3D object with a parent transform - need to add some more control with the parameters
     public static AudioSource PlayClip3D(AudioClip clip, float volume, Transform parent, float length = 0)
     {
         // create

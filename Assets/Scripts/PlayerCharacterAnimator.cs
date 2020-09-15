@@ -14,6 +14,7 @@ public class PlayerCharacterAnimator : MonoBehaviour
     const string LandState = "Land";
     const string SprintState = "Sprint";
     const string AbilityState = "Ability";
+    const string DeathState = "Death";
 
     // animator field
     Animator _animator = null;
@@ -38,6 +39,7 @@ public class PlayerCharacterAnimator : MonoBehaviour
         _movementScript.Land += OnLand;
         _movementScript.StartSprint += OnSprint;
         _movementScript.Ability += OnAbility;
+        _movementScript.Death += OnDeath;
     }
 
     private void OnDisable()
@@ -49,6 +51,7 @@ public class PlayerCharacterAnimator : MonoBehaviour
         _movementScript.Land -= OnLand;
         _movementScript.StartSprint -= OnSprint;
         _movementScript.Ability -= OnAbility;
+        _movementScript.Death -= OnDeath;
     }
     #endregion
 
@@ -87,5 +90,11 @@ public class PlayerCharacterAnimator : MonoBehaviour
     public void OnAbility()
     {
         _animator.CrossFadeInFixedTime(AbilityState, .2f);
+    }
+
+    public void OnDeath()
+    {
+        Debug.Log("PlayDeath");
+        _animator.CrossFadeInFixedTime(DeathState, .2f);
     }
 }

@@ -4,6 +4,7 @@ using UnityEngine;
 using System;
 
 [RequireComponent(typeof(CharacterController))]
+[RequireComponent(typeof(Health))]
 public class ThirdPersonMovement : MonoBehaviour
 {
     public event Action Idle = delegate { };
@@ -13,6 +14,8 @@ public class ThirdPersonMovement : MonoBehaviour
     public event Action StartSprint = delegate { };
     public event Action Land = delegate { };
     public event Action Ability = delegate { };
+    public event Action Recoil = delegate { };
+    public event Action Death = delegate { };
 
     [SerializeField] float _speed = 6f;
     [SerializeField] float _slowSpeed = 2f;
@@ -35,15 +38,18 @@ public class ThirdPersonMovement : MonoBehaviour
 
     // references
     PlayerInput _playerInput;
+    Health _playerHealth;
     CharacterController _controller;
     Transform _camTransform;
     AbilityLoadout _abilityScript;
-    
+
+    Coroutine _deathRoutine = null;
 
     // caching
     private void Awake()
     {
         _playerInput = GetComponent<PlayerInput>();
+        _playerHealth = GetComponent<Health>();
         _controller = GetComponent<CharacterController>();
         _abilityScript = GetComponent<AbilityLoadout>();
         _camTransform = Camera.main.transform;
@@ -57,6 +63,7 @@ public class ThirdPersonMovement : MonoBehaviour
         _playerInput.Jump += ApplyJump;
         _playerInput.StartSprint += ApplySprint;
         _playerInput.StopSprint += CancelSprint;
+        _playerHealth.Died += OnDeath;
         _abilityScript.UseAbilityStart += OnAbilityBegin;
         _abilityScript.UseAbilityStop += OnAbilityComplete;
     }
@@ -67,6 +74,7 @@ public class ThirdPersonMovement : MonoBehaviour
         _playerInput.Jump -= ApplyJump;
         _playerInput.StartSprint -= ApplySprint;
         _playerInput.StopSprint -= CancelSprint;
+        _playerHealth.Died -= OnDeath;
         _abilityScript.UseAbilityStart -= OnAbilityBegin;
         _abilityScript.UseAbilityStop -= OnAbilityComplete;
     }
@@ -109,6 +117,8 @@ public class ThirdPersonMovement : MonoBehaviour
             StartRunning?.Invoke();
         else
             Idle?.Invoke();
+
+        _verticalVelocity = 0;
 
         // returns player control
         _playerInput.Move += ApplyMovement;
@@ -265,13 +275,20 @@ public class ThirdPersonMovement : MonoBehaviour
         IsFalling = false;
     }
 
+    // sort of work but not really, needs to smooth
+    public void DamageRecoil(Transform damageOrigin, float recoilSpeed)
+    {
+        // get direction of damage;
+        Vector3 damageDirection = transform.position - damageOrigin.position;
+        _controller.Move(damageDirection * recoilSpeed * Time.deltaTime);
+    }
+
 
     // tests for ground using spherecasts
     // TODO this could use a little more fine tuning for slopes
     bool Grounded()
     {
-        RaycastHit hit;
-        if (Physics.SphereCast(transform.position + _controller.center, _controller.height / 2, -transform.up, out hit, 0.1f))
+        if (Physics.SphereCast(transform.position + _controller.center, _controller.height / 2, -transform.up, out RaycastHit hit, 0.1f))
         {
             if (hit.collider.gameObject.layer == LayerMask.NameToLayer("Ground"))
                 return true;
@@ -306,6 +323,45 @@ public class ThirdPersonMovement : MonoBehaviour
 
             else
                 Idle?.Invoke();
+        }
+    }
+
+
+    private void OnDeath()
+    {
+        Debug.Log("Test 0");
+        if(_deathRoutine == null)
+           _deathRoutine = StartCoroutine(DieRoutine());
+    }
+
+    IEnumerator DieRoutine()
+    {
+        // this removes player control, but I need a better way to handle this since it's been repeated
+        _playerInput.Move -= ApplyMovement;
+        _playerInput.Jump -= ApplyJump;
+        _playerInput.StartSprint -= ApplySprint;
+        _playerInput.StopSprint -= CancelSprint;
+        _playerHealth.Died -= OnDeath;
+        _abilityScript.UseAbilityStart -= OnAbilityBegin;
+        _abilityScript.UseAbilityStop -= OnAbilityComplete;
+
+        Debug.Log("Test 1");
+        while (true)
+        {   
+            if (!Grounded())
+            {
+                // waits for player to ground before playing death animation
+                Debug.Log("Test 2");
+                _controller.Move(new Vector3(0, Physics.gravity.y, 0) * Time.deltaTime);
+            }
+            else
+            {
+                Debug.Log("Test 3");
+                Death?.Invoke();
+                yield break;
+            }
+
+            yield return null;
         }
     }
 }
