@@ -22,7 +22,7 @@ public class PlayerInput : MonoBehaviour
         Mouse1Input();
     }
 
-    // gets keyboard axes movement and sends event
+
     private void MoveInput()
     {
         float horizontal = Input.GetAxisRaw("Horizontal");

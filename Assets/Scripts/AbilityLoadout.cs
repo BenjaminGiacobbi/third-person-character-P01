@@ -9,7 +9,6 @@ public class AbilityLoadout : MonoBehaviour
     public Ability EquippedAbility { get { return _defaultAbility; } set { _defaultAbility = value; } }
     public Transform CurrentTarget { get; private set; }
 
-
     public event Action<string, Color, Sprite> SetAbility = delegate { };
     public event Action UseAbilityStart = delegate { };
     public event Action UseAbilityStop = delegate { };
@@ -26,14 +25,19 @@ public class AbilityLoadout : MonoBehaviour
 
     AudioSource _failAudioObject = null;
     PlayerInput _inputScript = null;
+    ThirdPersonMovement _movementScript = null;
+
     float _cooldownTimer = 0;
     float _cooldownMinusCast = 0;
+
+    bool _canUse = true;
 
 
     // caching -- this assumed it's on the same object, might need to fix
     private void Awake()
     {
         _inputScript = GetComponent<PlayerInput>();
+        _movementScript = GetComponent<ThirdPersonMovement>();
     }
 
 
@@ -42,12 +46,18 @@ public class AbilityLoadout : MonoBehaviour
     {
         _inputScript.LeftClick += StartAbility;
         _inputScript.RightClick += SetTarget;
+        _movementScript.StartRecoil += RemoveAbilityControl;
+        _movementScript.StopRecoil += ReturnAbilityControl;
+        _movementScript.Death += RemoveAbilityControl;
     }
 
     private void OnDisable()
     {
         _inputScript.LeftClick -= StartAbility;
-        _inputScript.RightClick += SetTarget;
+        _inputScript.RightClick -= SetTarget;
+        _movementScript.StartRecoil -= RemoveAbilityControl;
+        _movementScript.StopRecoil -= ReturnAbilityControl;
+        _movementScript.Death -= RemoveAbilityControl;
     }
     #endregion
 
@@ -97,7 +107,7 @@ public class AbilityLoadout : MonoBehaviour
    // begins the ability activation -- actual ability isn't used here, as this is used to coordinate feedback
     public void StartAbility()
     {
-        if (_cooldownTimer == 0 && EquippedAbility != null)
+        if (_cooldownTimer == 0 && EquippedAbility != null && _canUse)
         {
             AbilityFeedback();
 
@@ -150,6 +160,16 @@ public class AbilityLoadout : MonoBehaviour
             Cooldown?.Invoke(_cooldownTimer, EquippedAbility.cooldown);
         }
         
+    }
+
+    void RemoveAbilityControl()
+    {
+        _canUse = false;
+    }
+
+    void ReturnAbilityControl()
+    {
+        _canUse = true;
     }
 
     // particles use a switch statement because it'd be less wasteful to have particles active on the player than instantiate prefabs

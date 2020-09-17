@@ -15,13 +15,11 @@ public class Damage : MonoBehaviour
             health.Damage(_damageAmount);
         }
 
-        /*
         // applies damage recoil if possible
         ThirdPersonMovement movement = other.gameObject.GetComponent<ThirdPersonMovement>();
         if(movement != null)
         {
             movement.DamageRecoil(transform, _recoilSpeed);
         }
-        */
     }
 }

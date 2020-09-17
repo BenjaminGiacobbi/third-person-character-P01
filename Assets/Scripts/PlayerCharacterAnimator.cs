@@ -14,6 +14,7 @@ public class PlayerCharacterAnimator : MonoBehaviour
     const string LandState = "Land";
     const string SprintState = "Sprint";
     const string AbilityState = "Ability";
+    const string RecoilState = "Recoil";
     const string DeathState = "Death";
 
     // animator field
@@ -39,6 +40,7 @@ public class PlayerCharacterAnimator : MonoBehaviour
         _movementScript.Land += OnLand;
         _movementScript.StartSprint += OnSprint;
         _movementScript.Ability += OnAbility;
+        _movementScript.StartRecoil += OnRecoil;
         _movementScript.Death += OnDeath;
     }
 
@@ -51,48 +53,54 @@ public class PlayerCharacterAnimator : MonoBehaviour
         _movementScript.Land -= OnLand;
         _movementScript.StartSprint -= OnSprint;
         _movementScript.Ability -= OnAbility;
+        _movementScript.StartRecoil -= OnRecoil;
         _movementScript.Death -= OnDeath;
     }
     #endregion
 
 
     // i have no idea what any of this I'm trying my best alright
-    public void OnIdle()
+    private void OnIdle()
     {
         _animator.CrossFadeInFixedTime(IdleState, .2f);
     }
 
-    public void OnStartRunning()
+    private void OnStartRunning()
     {
         _animator.CrossFadeInFixedTime(RunState, .2f);
     }
 
-    public void OnStartJump()
+    private void OnStartJump()
     {
         _animator.Play(JumpState);
     }
 
-    public void OnLand()
+    private void OnLand()
     {
         _animator.Play(LandState);
     }
 
-    public void OnStartFalling()
+    private void OnStartFalling()
     {
         _animator.CrossFadeInFixedTime(FallState, .2f);
     }
 
-    public void OnSprint()
+    private void OnSprint()
     {
         _animator.CrossFadeInFixedTime(SprintState, .2f);
     }
 
-    public void OnAbility()
+    private void OnAbility()
     {
         _animator.CrossFadeInFixedTime(AbilityState, .2f);
     }
 
-    public void OnDeath()
+    private void OnRecoil()
+    {
+        _animator.Play(RecoilState);
+    }
+
+    private void OnDeath()
     {
         Debug.Log("PlayDeath");
         _animator.CrossFadeInFixedTime(DeathState, .2f);

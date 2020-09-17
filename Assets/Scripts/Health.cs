@@ -25,7 +25,6 @@ public class Health : MonoBehaviour, IKillable, IDamageable<int>
         CurrentHealth += amountHealed;
         HealthRestored?.Invoke(amountHealed);
         HealthSet?.Invoke(CurrentHealth);
-        Debug.Log(gameObject.name + " has healed " + amountHealed + " health.");
     }
 
     public void Damage(int damageTaken)
@@ -36,7 +35,6 @@ public class Health : MonoBehaviour, IKillable, IDamageable<int>
         if(CurrentHealth > 0)
         {
             TookDamage?.Invoke(damageTaken);
-            Debug.Log(gameObject.name + " had taken " + damageTaken + " damage.");
         }
         else
         {

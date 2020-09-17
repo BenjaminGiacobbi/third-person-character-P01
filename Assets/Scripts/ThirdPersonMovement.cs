@@ -14,10 +14,12 @@ public class ThirdPersonMovement : MonoBehaviour
     public event Action StartSprint = delegate { };
     public event Action Land = delegate { };
     public event Action Ability = delegate { };
-    public event Action Recoil = delegate { };
+    public event Action StartRecoil = delegate { };
+    public event Action StopRecoil = delegate { };
     public event Action Death = delegate { };
 
     [SerializeField] float _speed = 6f;
+    [SerializeField] float _recoilDecel = 4f;
     [SerializeField] float _slowSpeed = 2f;
     [SerializeField] float _sprintModifier = 2f;
     [SerializeField] float _jumpSpeed = 10f;
@@ -28,13 +30,20 @@ public class ThirdPersonMovement : MonoBehaviour
     // fields for physics calculation
     private float _turnSmoothVelocity;
     private float _verticalVelocity;
-    private float _sprintSpeed;
+    private float _sprintSpeed = 0;
+    private float _recoilSpeed = 0;
+    private Vector3 _recoilDirection;
 
     // character state flags
     public bool IsRunning { get; private set; } = false;
     public bool IsJumping { get; private set; } = false;
     public bool IsFalling { get; private set; } = false;
     public bool IsSprinting { get; private set; } = false;
+
+    // movement control flags
+    private bool _canBasic = true;
+    private bool _canSprint = true;
+    private bool _isDead = false;
 
     // references
     PlayerInput _playerInput;
@@ -43,6 +52,7 @@ public class ThirdPersonMovement : MonoBehaviour
     Transform _camTransform;
     AbilityLoadout _abilityScript;
 
+    // coroutine
     Coroutine _deathRoutine = null;
 
     // caching
@@ -66,6 +76,7 @@ public class ThirdPersonMovement : MonoBehaviour
         _playerHealth.Died += OnDeath;
         _abilityScript.UseAbilityStart += OnAbilityBegin;
         _abilityScript.UseAbilityStop += OnAbilityComplete;
+        _playerHealth.Died += OnDeath;
     }
 
     private void OnDisable()
@@ -77,6 +88,7 @@ public class ThirdPersonMovement : MonoBehaviour
         _playerHealth.Died -= OnDeath;
         _abilityScript.UseAbilityStart -= OnAbilityBegin;
         _abilityScript.UseAbilityStop -= OnAbilityComplete;
+        _playerHealth.Died -= OnDeath;
     }
     #endregion
 
@@ -88,68 +100,51 @@ public class ThirdPersonMovement : MonoBehaviour
         _sprintSpeed = _speed * _sprintModifier;
     }
 
-
-    // these can be used to activate or deactivate player movement as they link to the
-    private void OnAbilityBegin()
+    private void Update()
     {
-        // TODO sprint interferes with the abiltiy use animation if sprint is released
-        // Canceling sprint by default is a bandaid solution but it means if the player is still holding the sprint button they have to press it again 
-        CancelSprint(); 
-
-
-        _playerInput.Move -= ApplyMovement;
-        _playerInput.Jump -= ApplyJump;
-        _playerInput.StartSprint -= ApplySprint;
-        _playerInput.StopSprint -= CancelSprint;
-        Ability.Invoke();
+        CalculateRecoil();
     }
 
+
+    // deactivates player movement as they begin ability
+    private void OnAbilityBegin()
+    {
+        _canBasic = _canSprint = false;
+        _verticalVelocity = 0;
+        Ability?.Invoke();
+    }
+
+    // reverts player events after ability, can technically be called for other purposes since it sets most player defaults
     private void OnAbilityComplete()
     {
-        // informs saved player state from before control was removed
-        if (IsFalling)
-            StartFall?.Invoke();
-        else if (IsJumping)
-            StartJump?.Invoke();
-        else if (IsSprinting)
-            StartSprint.Invoke();
-        else if (IsRunning)
-            StartRunning?.Invoke();
-        else
-            Idle?.Invoke();
-
-        _verticalVelocity = 0;
-
-        // returns player control
-        _playerInput.Move += ApplyMovement;
-        _playerInput.Jump += ApplyJump;
-        _playerInput.StartSprint += ApplySprint;
-        _playerInput.StopSprint += CancelSprint;
+        _canBasic = _canSprint = true;
+        NextLogicalState();
     }
 
 
     // calculates player movement and accesses controller
     private void ApplyMovement(Vector3 direction)
     {
-        
         if (direction.magnitude >= 0.1f)
         {
             CheckIfStartedMoving();
-            // Atan is tangent of angle between the x axis and vector starting at 0 and terminating at x, y (in radians by default)
-            // passing in x, then z adjusts for the forward direction being positive z here
-            float targetAngle = Mathf.Atan2(direction.x, direction.z) * Mathf.Rad2Deg + _camTransform.eulerAngles.y;
+            if(_canBasic)
+            {
+                // Atan is tangent of angle between the x axis and vector starting at 0 and terminating at x, y (in radians by default)
+                // passing in x, then z adjusts for the forward direction being positive z here
+                float targetAngle = Mathf.Atan2(direction.x, direction.z) * Mathf.Rad2Deg + _camTransform.eulerAngles.y;
 
 
-            // SmoothDampAngle adjusts and smooths the turn
-            float angle = Mathf.SmoothDampAngle(transform.eulerAngles.y, targetAngle, ref _turnSmoothVelocity, _turnSmoothTime);
-            transform.rotation = Quaternion.Euler(0f, angle, 0f);
+                // SmoothDampAngle adjusts and smooths the turn
+                float angle = Mathf.SmoothDampAngle(transform.eulerAngles.y, targetAngle, ref _turnSmoothVelocity, _turnSmoothTime);
+                transform.rotation = Quaternion.Euler(0f, angle, 0f);
 
 
-            // adjusts the direction of movement by applying the forward direction to the player's quaternion rotation of targetAngle
-            Vector3 moveDirection = Quaternion.Euler(0f, targetAngle, 0f) * Vector3.forward;
-            _controller.Move(moveDirection.normalized * _speed * Time.deltaTime);
+                // adjusts the direction of movement by applying the forward direction to the player's quaternion rotation of targetAngle
+                Vector3 moveDirection = Quaternion.Euler(0f, targetAngle, 0f) * Vector3.forward;
+                _controller.Move(moveDirection.normalized * _speed * Time.deltaTime);
+            }
         }
-
         else
         {
             CheckIfStoppedMoving();
@@ -157,78 +152,70 @@ public class ThirdPersonMovement : MonoBehaviour
         
     }
 
+
     // accepts the raw input axis for jump (can be either 1 or 0)
     private void ApplyJump(float jumpAxis)
     {
-        
         if (Grounded())
         {
-            // resets velocity for each step
-            _verticalVelocity = 0;
-
             CheckIfLanded();
-
-            // if jumpAxis is positive (pressed), starts jump)
-            if (jumpAxis > 0)
-            {
-                
+            _verticalVelocity = 0;
+            
+            if (jumpAxis > 0 && _canBasic)
                 _verticalVelocity = _jumpSpeed;
-            }
         }
         else
         {
-            // applies gravity as the player jumps -- also applies a multiplier on downwards fall
+            // applies gravity a multiplier on downwards fall - deltaTime is applied twice due to a bug
             _verticalVelocity += Physics.gravity.y * Time.deltaTime * (_verticalVelocity < 0 ? _fallGravityMultiplier : 1);
-
             CheckIfJumping();
         }
 
         // puts movement into a Vector3 to use .Move
         Vector3 playerMovement = new Vector3(0, _verticalVelocity, 0);
         _controller.Move(playerMovement * Time.deltaTime);
-
-        
     }
 
 
-    // applies sprint
+    // applies the sprint flag, sets regardless of grounding state so the animation can be updated on landing
     private void ApplySprint()
     {
-        // sets sprint flag regardless of grounding so state can be updated upon landing
         if(!IsSprinting)
+        {
             IsSprinting = true;
-
-        // sends event
-        if (Grounded() && IsRunning)
-        {        
-            StartSprint?.Invoke();
             _speed = _sprintSpeed;
         }
+            
+        if (Grounded() && IsRunning && _canSprint)     
+            StartSprint?.Invoke();
     }
+
 
     // cancels sprint by setting back flag, and resumes running if still grounded
     private void CancelSprint()
     {
-        IsSprinting = false;
+        if (IsSprinting)
+        {
+            IsSprinting = false;
+            _speed = _sprintSpeed / _sprintModifier;
+        }
 
-        if (Grounded() && IsRunning)
+        if (Grounded() && IsRunning && _canSprint)
             StartRunning?.Invoke();
-
-        _speed = _sprintSpeed / _sprintModifier;
     }
 
 
     // sets flag for player movement
     private void CheckIfStartedMoving()
     {
-        // movement animation events can't be activated when jumping to prevent overlap with jump animations
+        // prevents overlap with jump animations in the animation controller
         if (!IsRunning && !IsJumping)
         {
-            // this is set here because the sprint event depends on the player being in running state
+            // this is set first because the sprint event depends on the player being in running state
             IsRunning = true;
             if (IsSprinting)
                 ApplySprint();
-            else
+            else if (_canBasic)
                 StartRunning?.Invoke();
         }
 
@@ -239,9 +226,8 @@ public class ThirdPersonMovement : MonoBehaviour
     // reverts flag for player movement
     private void CheckIfStoppedMoving()
     {
-        if (IsRunning && !IsJumping)
-            Idle?.Invoke(); // our velocity said we stopped moving but previously were, so set _isMoving
-
+        if (IsRunning && !IsJumping && _canBasic)
+            Idle?.Invoke();
 
         IsRunning = false;
     }
@@ -250,13 +236,14 @@ public class ThirdPersonMovement : MonoBehaviour
     // checks for player jump, and tests if their velocity is negative to also apply falling state
     private void CheckIfJumping()
     {
-        if (!IsJumping)
+        if (!IsJumping && _canBasic)
             StartJump?.Invoke();
 
         if (_verticalVelocity < 0 && !IsFalling)
         {
-            StartFall?.Invoke();
             IsFalling = true;
+            if(_canBasic)
+                StartFall?.Invoke();
         }
 
         IsJumping = true;
@@ -266,7 +253,7 @@ public class ThirdPersonMovement : MonoBehaviour
     // checks for landing and sets jumping flags to false
     private void CheckIfLanded()
     {
-        if(IsJumping)
+        if(IsJumping && _canBasic)
         {
             Land?.Invoke();
             StartCoroutine(LandRoutine());
@@ -275,12 +262,47 @@ public class ThirdPersonMovement : MonoBehaviour
         IsFalling = false;
     }
 
-    // sort of work but not really, needs to smooth
+    // edits player states to account for recoil, but recoil is primarily handles in a function called from update
     public void DamageRecoil(Transform damageOrigin, float recoilSpeed)
     {
-        // get direction of damage;
-        Vector3 damageDirection = transform.position - damageOrigin.position;
-        _controller.Move(damageDirection * recoilSpeed * Time.deltaTime);
+        _canBasic = _canSprint = false;
+
+        // rotates the player to make the damage animation feel more effective
+        Vector2 direction = new Vector2(damageOrigin.position.x - transform.position.x, damageOrigin.position.z - transform.position.z);
+        float newAngle = Vector2.Angle(direction, new Vector2(transform.forward.x, transform.forward.z));
+        transform.localEulerAngles = new Vector3(0, transform.localEulerAngles.y + newAngle, 0);
+
+        _verticalVelocity = 0;
+        _recoilDirection = transform.position - damageOrigin.position;
+        _recoilSpeed = recoilSpeed;
+
+        Debug.Log("Started Recoil");
+        StartRecoil?.Invoke();
+    }
+
+
+    // applies recoil with a basic timer system according to designer-determined deceleration
+    private void CalculateRecoil()
+    {
+        if (_recoilSpeed > 0)
+        {
+            _controller.Move(new Vector3
+                (_recoilDirection.x * _recoilSpeed, Physics.gravity.y * Time.deltaTime, _recoilDirection.z * _recoilSpeed) * Time.deltaTime);
+            _recoilSpeed -= Time.deltaTime * _recoilDecel;
+            
+            // TODO this bool is only used once, there's probably a way to make it unnecessary
+            if(_recoilSpeed <= 0)
+            {
+                _recoilSpeed = 0;
+                if (_isDead)
+                    _deathRoutine = StartCoroutine(DieRoutine());
+                else
+                    OnAbilityComplete();
+
+                Debug.Log("Stopped Recoil");
+                StopRecoil?.Invoke();
+            }
+        }            
     }
 
 
@@ -300,68 +322,55 @@ public class ThirdPersonMovement : MonoBehaviour
     }
 
 
-    // this coroutine is used to avoid an extra reference to the animator -- runs for approximately the length of the land animation
+    // this coroutine is used to avoid two-way reference with the animator -- runs based on designer control
     IEnumerator LandRoutine()
     {
-        // sets player's speed to slow for the duration of the land animation to make it feel more natural
         float temp = _speed;
         _speed = _slowSpeed;
         yield return new WaitForSeconds(_landAnimationTime);
         _speed = temp;
 
-
-        // sets current animation event based on run flag
-        if(!IsJumping)
-        {
-            if (IsRunning)
-            {
-                if (IsSprinting)
-                    ApplySprint();
-                else
-                    StartRunning?.Invoke();
-            }
-
-            else
-                Idle?.Invoke();
-        }
+        NextLogicalState();
     }
 
 
     private void OnDeath()
     {
-        Debug.Log("Test 0");
-        if(_deathRoutine == null)
-           _deathRoutine = StartCoroutine(DieRoutine());
+        _isDead = true;
+        _playerHealth.Died -= OnDeath;
     }
 
+
+    // death can't start until the player is grounded
     IEnumerator DieRoutine()
     {
-        // this removes player control, but I need a better way to handle this since it's been repeated
-        _playerInput.Move -= ApplyMovement;
-        _playerInput.Jump -= ApplyJump;
-        _playerInput.StartSprint -= ApplySprint;
-        _playerInput.StopSprint -= CancelSprint;
-        _playerHealth.Died -= OnDeath;
-        _abilityScript.UseAbilityStart -= OnAbilityBegin;
-        _abilityScript.UseAbilityStop -= OnAbilityComplete;
-
-        Debug.Log("Test 1");
         while (true)
-        {   
+        {
             if (!Grounded())
             {
-                // waits for player to ground before playing death animation
-                Debug.Log("Test 2");
-                _controller.Move(new Vector3(0, Physics.gravity.y, 0) * Time.deltaTime);
+                yield return null;
             }
             else
             {
-                Debug.Log("Test 3");
                 Death?.Invoke();
                 yield break;
             }
-
-            yield return null;
         }
+    }
+
+
+    // returns the player to next state based on their current flags, the order here is based on logical exclusions
+    private void NextLogicalState()
+    {
+        if (IsFalling)
+            StartFall?.Invoke();
+        else if (IsJumping)
+            StartJump?.Invoke();
+        else if (IsSprinting)
+            StartSprint.Invoke();
+        else if (IsRunning)
+            StartRunning?.Invoke();
+        else
+            Idle?.Invoke();
     }
 }

@@ -6,7 +6,6 @@ using UnityEngine.UI;
 [CreateAssetMenu(menuName = "Abilities")]
 public abstract class Ability : ScriptableObject
 {
-
     public string abilityName;
     public Color abilityColor;
     public Sprite abilitySprite;
