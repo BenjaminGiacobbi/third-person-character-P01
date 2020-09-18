@@ -379,6 +379,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: af08210b88c343b4f9a6c2f1eaef63de, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  _impactParticles: {fileID: 6019888148826959834, guid: 1c1192d74ac52e1499c3c788c4a43269,
+    type: 3}
   _damageAmount: 10
   _recoilSpeed: 38
 --- !u!1 &101528460
@@ -816,6 +818,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: af08210b88c343b4f9a6c2f1eaef63de, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  _impactParticles: {fileID: 6019888148826959834, guid: 1c1192d74ac52e1499c3c788c4a43269,
+    type: 3}
   _damageAmount: 10
   _recoilSpeed: 38
 --- !u!1 &181941881
@@ -2570,7 +2574,7 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1142643420}
-  m_LocalRotation: {x: -0.01814147, y: 0.00000003579447, z: -0.00000000843875, w: 0.99983543}
+  m_LocalRotation: {x: -0.01814147, y: 0.00000002742084, z: -0.0000000064646195, w: 0.99983543}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children:
@@ -3396,6 +3400,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: af08210b88c343b4f9a6c2f1eaef63de, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  _impactParticles: {fileID: 6019888148826959834, guid: 1c1192d74ac52e1499c3c788c4a43269,
+    type: 3}
   _damageAmount: 10
   _recoilSpeed: 38
 --- !u!1 &1465349615
@@ -3823,6 +3829,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: af08210b88c343b4f9a6c2f1eaef63de, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  _impactParticles: {fileID: 6019888148826959834, guid: 1c1192d74ac52e1499c3c788c4a43269,
+    type: 3}
   _damageAmount: 10
   _recoilSpeed: 38
 --- !u!1 &1654780316
@@ -4579,6 +4587,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: af08210b88c343b4f9a6c2f1eaef63de, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  _impactParticles: {fileID: 6019888148826959834, guid: 1c1192d74ac52e1499c3c788c4a43269,
+    type: 3}
   _damageAmount: 10
   _recoilSpeed: 38
 --- !u!1 &1979629060
@@ -4874,6 +4884,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: af08210b88c343b4f9a6c2f1eaef63de, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  _impactParticles: {fileID: 6019888148826959834, guid: 1c1192d74ac52e1499c3c788c4a43269,
+    type: 3}
   _damageAmount: 10
   _recoilSpeed: 38
 --- !u!1 &2113460542
@@ -5075,6 +5087,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: af08210b88c343b4f9a6c2f1eaef63de, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  _impactParticles: {fileID: 6019888148826959834, guid: 1c1192d74ac52e1499c3c788c4a43269,
+    type: 3}
   _damageAmount: 10
   _recoilSpeed: 30
 --- !u!1 &2131722790
@@ -5177,61 +5191,11 @@ PrefabInstance:
   m_Modification:
     m_TransformParent: {fileID: 0}
     m_Modifications:
-    - target: {fileID: 6962329314486382349, guid: 2b5db1b6bb260c849b911a2070a3c2a9,
-        type: 3}
-      propertyPath: m_audioClip
-      value: 
-      objectReference: {fileID: 8300000, guid: 7b98a64c13029d048bd7d36e1ad7482e, type: 3}
-    - target: {fileID: 6962329314486382349, guid: 2b5db1b6bb260c849b911a2070a3c2a9,
-        type: 3}
-      propertyPath: m_PlayOnAwake
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 6962329314486382349, guid: 2b5db1b6bb260c849b911a2070a3c2a9,
-        type: 3}
-      propertyPath: m_Volume
-      value: 0.517
-      objectReference: {fileID: 0}
-    - target: {fileID: 8283561044185847139, guid: 2b5db1b6bb260c849b911a2070a3c2a9,
-        type: 3}
-      propertyPath: playOnAwake
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 8283561044185847139, guid: 2b5db1b6bb260c849b911a2070a3c2a9,
-        type: 3}
-      propertyPath: startDelay.scalar
-      value: 0.9
-      objectReference: {fileID: 0}
-    - target: {fileID: 9173134780360185686, guid: 2b5db1b6bb260c849b911a2070a3c2a9,
-        type: 3}
-      propertyPath: _maxHealth
-      value: 20
-      objectReference: {fileID: 0}
-    - target: {fileID: 9173134780360185686, guid: 2b5db1b6bb260c849b911a2070a3c2a9,
-        type: 3}
-      propertyPath: _currentHealth
-      value: 20
-      objectReference: {fileID: 0}
     - target: {fileID: 9173134780360185687, guid: 2b5db1b6bb260c849b911a2070a3c2a9,
         type: 3}
       propertyPath: _testTarget
       value: 
       objectReference: {fileID: 2114145194}
-    - target: {fileID: 9173134780360185687, guid: 2b5db1b6bb260c849b911a2070a3c2a9,
-        type: 3}
-      propertyPath: _defaultAbility
-      value: 
-      objectReference: {fileID: 0}
-    - target: {fileID: 9173134780360185687, guid: 2b5db1b6bb260c849b911a2070a3c2a9,
-        type: 3}
-      propertyPath: _abilityFailSound
-      value: 
-      objectReference: {fileID: 8300000, guid: c3c74d41ad79807439cf3687ea7efc1d, type: 3}
-    - target: {fileID: 9173134780360185704, guid: 2b5db1b6bb260c849b911a2070a3c2a9,
-        type: 3}
-      propertyPath: _recoilDecel
-      value: 100
-      objectReference: {fileID: 0}
     - target: {fileID: 9173134780360185705, guid: 2b5db1b6bb260c849b911a2070a3c2a9,
         type: 3}
       propertyPath: m_LocalPosition.x

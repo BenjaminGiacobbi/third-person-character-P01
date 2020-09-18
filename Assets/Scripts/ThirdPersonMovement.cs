@@ -39,11 +39,11 @@ public class ThirdPersonMovement : MonoBehaviour
     public bool IsJumping { get; private set; } = false;
     public bool IsFalling { get; private set; } = false;
     public bool IsSprinting { get; private set; } = false;
+    public bool IsDead { get; private set; } = false;
 
     // movement control flags
     private bool _canBasic = true;
     private bool _canSprint = true;
-    private bool _isDead = false;
 
     // references
     PlayerInput _playerInput;
@@ -267,10 +267,13 @@ public class ThirdPersonMovement : MonoBehaviour
     {
         _canBasic = _canSprint = false;
 
-        // rotates the player to make the damage animation feel more effective
+        /*
+        // I wasted thirty minutes screwing up this calculation and then one of my smartass friends said (why not just use LookAt())
         Vector2 direction = new Vector2(damageOrigin.position.x - transform.position.x, damageOrigin.position.z - transform.position.z);
         float newAngle = Vector2.Angle(direction, new Vector2(transform.forward.x, transform.forward.z));
         transform.localEulerAngles = new Vector3(0, transform.localEulerAngles.y + newAngle, 0);
+        */
+        transform.LookAt(new Vector3(damageOrigin.position.x, transform.position.y, damageOrigin.position.z));
 
         _verticalVelocity = 0;
         _recoilDirection = transform.position - damageOrigin.position;
@@ -290,17 +293,17 @@ public class ThirdPersonMovement : MonoBehaviour
                 (_recoilDirection.x * _recoilSpeed, Physics.gravity.y * Time.deltaTime, _recoilDirection.z * _recoilSpeed) * Time.deltaTime);
             _recoilSpeed -= Time.deltaTime * _recoilDecel;
             
-            // TODO this bool is only used once, there's probably a way to make it unnecessary
             if(_recoilSpeed <= 0)
             {
                 _recoilSpeed = 0;
-                if (_isDead)
+                if (IsDead)
                     _deathRoutine = StartCoroutine(DieRoutine());
                 else
+                {
+                    _recoilDirection = Vector3.zero;
+                    StopRecoil?.Invoke();
                     OnAbilityComplete();
-
-                Debug.Log("Stopped Recoil");
-                StopRecoil?.Invoke();
+                }
             }
         }            
     }
@@ -310,7 +313,7 @@ public class ThirdPersonMovement : MonoBehaviour
     // TODO this could use a little more fine tuning for slopes
     bool Grounded()
     {
-        if (Physics.SphereCast(transform.position + _controller.center, _controller.height / 2, -transform.up, out RaycastHit hit, 0.1f))
+        if (Physics.SphereCast(transform.position + _controller.center, _controller.height / 4, -transform.up, out RaycastHit hit, 0.6f))
         {
             if (hit.collider.gameObject.layer == LayerMask.NameToLayer("Ground"))
                 return true;
@@ -336,7 +339,7 @@ public class ThirdPersonMovement : MonoBehaviour
 
     private void OnDeath()
     {
-        _isDead = true;
+        IsDead = true;
         _playerHealth.Died -= OnDeath;
     }
 
@@ -362,11 +365,11 @@ public class ThirdPersonMovement : MonoBehaviour
     // returns the player to next state based on their current flags, the order here is based on logical exclusions
     private void NextLogicalState()
     {
-        if (IsFalling)
+        if (IsFalling && IsJumping)
             StartFall?.Invoke();
         else if (IsJumping)
             StartJump?.Invoke();
-        else if (IsSprinting)
+        else if (IsSprinting && IsRunning)
             StartSprint.Invoke();
         else if (IsRunning)
             StartRunning?.Invoke();

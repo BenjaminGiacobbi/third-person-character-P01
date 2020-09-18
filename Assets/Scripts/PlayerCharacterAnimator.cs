@@ -22,6 +22,8 @@ public class PlayerCharacterAnimator : MonoBehaviour
     ThirdPersonMovement _movementScript = null;
     AbilityLoadout _abilityScript = null;
 
+    Coroutine _damageRoutine = null;
+
     // caching
     private void Awake()
     {
@@ -102,7 +104,6 @@ public class PlayerCharacterAnimator : MonoBehaviour
 
     private void OnDeath()
     {
-        Debug.Log("PlayDeath");
         _animator.CrossFadeInFixedTime(DeathState, .2f);
     }
 }

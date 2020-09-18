@@ -10,10 +10,18 @@ public class Health : MonoBehaviour, IKillable, IDamageable<int>
     public event Action<int> TookDamage = delegate { };
     public event Action Died = delegate { };
 
+
     [SerializeField] int _maxHealth = 100;
     public int MaxHealth { get { return _maxHealth; } set { _maxHealth = value; } }
     [SerializeField] int _currentHealth = 100;
     public int CurrentHealth { get { return _currentHealth; } set { _currentHealth = value; } }
+
+
+    [SerializeField] SkinnedMeshRenderer _bodyRenderer = null;
+    [SerializeField] Material _damageMaterial = null;
+    [SerializeField] float _flashTime = 1f;
+
+    Coroutine _damageRoutine = null;
 
     private void Start()
     {
@@ -30,11 +38,13 @@ public class Health : MonoBehaviour, IKillable, IDamageable<int>
     public void Damage(int damageTaken)
     {
         CurrentHealth -= damageTaken;
+        if (_damageRoutine == null)
+            _damageRoutine = StartCoroutine(FlashRoutine());
 
-
-        if(CurrentHealth > 0)
+        if (CurrentHealth > 0)
         {
             TookDamage?.Invoke(damageTaken);
+
         }
         else
         {
@@ -47,5 +57,17 @@ public class Health : MonoBehaviour, IKillable, IDamageable<int>
     public void Kill()
     {
         Died.Invoke();
+    }
+
+    // simple flash stuff
+    IEnumerator FlashRoutine()
+    {
+        Material tempMaterial = _bodyRenderer.material;
+        _bodyRenderer.material = _damageMaterial;
+
+        yield return new WaitForSeconds(_flashTime);
+
+        _bodyRenderer.material = tempMaterial;
+        _damageRoutine = null;
     }
 }
