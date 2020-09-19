@@ -7,6 +7,8 @@ using System;
 [RequireComponent(typeof(Health))]
 public class ThirdPersonMovement : MonoBehaviour
 {
+    public event Action Active = delegate { };
+    public event Action Inactive = delegate { };
     public event Action Idle = delegate { };
     public event Action StartRunning = delegate { };
     public event Action StartJump = delegate { };
@@ -35,6 +37,7 @@ public class ThirdPersonMovement : MonoBehaviour
     private Vector3 _recoilDirection;
 
     // character state flags
+    public bool IsActive { get; private set; } = false;
     public bool IsRunning { get; private set; } = false;
     public bool IsJumping { get; private set; } = false;
     public bool IsFalling { get; private set; } = false;
@@ -65,34 +68,6 @@ public class ThirdPersonMovement : MonoBehaviour
         _camTransform = Camera.main.transform;
     }
 
-
-    #region subscriptions
-    private void OnEnable()
-    {
-        _playerInput.Move += ApplyMovement;
-        _playerInput.Jump += ApplyJump;
-        _playerInput.StartSprint += ApplySprint;
-        _playerInput.StopSprint += CancelSprint;
-        _playerHealth.Died += OnDeath;
-        _abilityScript.UseAbilityStart += OnAbilityBegin;
-        _abilityScript.UseAbilityStop += OnAbilityComplete;
-        _playerHealth.Died += OnDeath;
-    }
-
-    private void OnDisable()
-    {
-        _playerInput.Move -= ApplyMovement;
-        _playerInput.Jump -= ApplyJump;
-        _playerInput.StartSprint -= ApplySprint;
-        _playerInput.StopSprint -= CancelSprint;
-        _playerHealth.Died -= OnDeath;
-        _abilityScript.UseAbilityStart -= OnAbilityBegin;
-        _abilityScript.UseAbilityStop -= OnAbilityComplete;
-        _playerHealth.Died -= OnDeath;
-    }
-    #endregion
-
-
     // start is called the frame after awake
     private void Start()
     {
@@ -104,7 +79,6 @@ public class ThirdPersonMovement : MonoBehaviour
     {
         CalculateRecoil();
     }
-
 
     // deactivates player movement as they begin ability
     private void OnAbilityBegin()
@@ -268,7 +242,7 @@ public class ThirdPersonMovement : MonoBehaviour
         _canBasic = _canSprint = false;
 
         /*
-        // I wasted thirty minutes screwing up this calculation and then one of my smartass friends said (why not just use LookAt())
+        // I wasted thirty minutes screwing up this calculation and then one of my smartass friends said "why not just use LookAt()"
         Vector2 direction = new Vector2(damageOrigin.position.x - transform.position.x, damageOrigin.position.z - transform.position.z);
         float newAngle = Vector2.Angle(direction, new Vector2(transform.forward.x, transform.forward.z));
         transform.localEulerAngles = new Vector3(0, transform.localEulerAngles.y + newAngle, 0);
@@ -279,7 +253,6 @@ public class ThirdPersonMovement : MonoBehaviour
         _recoilDirection = transform.position - damageOrigin.position;
         _recoilSpeed = recoilSpeed;
 
-        Debug.Log("Started Recoil");
         StartRecoil?.Invoke();
     }
 
@@ -306,6 +279,12 @@ public class ThirdPersonMovement : MonoBehaviour
                 }
             }
         }            
+    }
+
+
+    private void OnDeath()
+    {
+        IsDead = true;
     }
 
 
@@ -336,14 +315,6 @@ public class ThirdPersonMovement : MonoBehaviour
         NextLogicalState();
     }
 
-
-    private void OnDeath()
-    {
-        IsDead = true;
-        _playerHealth.Died -= OnDeath;
-    }
-
-
     // death can't start until the player is grounded
     IEnumerator DieRoutine()
     {
@@ -355,6 +326,7 @@ public class ThirdPersonMovement : MonoBehaviour
             }
             else
             {
+                ActivePlayer(false);
                 Death?.Invoke();
                 yield break;
             }
@@ -375,5 +347,55 @@ public class ThirdPersonMovement : MonoBehaviour
             StartRunning?.Invoke();
         else
             Idle?.Invoke();
+    }
+
+    private void GainControl()
+    {
+        if(!IsActive)
+        {
+            _playerInput.Move += ApplyMovement;
+            _playerInput.Jump += ApplyJump;
+            _playerInput.StartSprint += ApplySprint;
+            _playerInput.StopSprint += CancelSprint;
+            _playerHealth.Died += OnDeath;
+            _abilityScript.UseAbilityStart += OnAbilityBegin;
+            _abilityScript.UseAbilityStop += OnAbilityComplete;
+        }
+
+        CancelSprint();
+        IsRunning = IsSprinting = IsJumping = IsFalling = false;
+        _canBasic = _canSprint = IsActive = true;
+        NextLogicalState();
+    }
+
+    private void ReleaseControl()
+    {
+        if(IsActive)
+        {
+            _playerInput.Move -= ApplyMovement;
+            _playerInput.Jump -= ApplyJump;
+            _playerInput.StartSprint -= ApplySprint;
+            _playerInput.StopSprint -= CancelSprint;
+            _playerHealth.Died -= OnDeath;
+            _abilityScript.UseAbilityStart -= OnAbilityBegin;
+            _abilityScript.UseAbilityStop -= OnAbilityComplete;
+        }
+
+        _canBasic = _canSprint = IsActive = false;
+        NextLogicalState();
+    }
+
+    public void ActivePlayer(bool stateBool)
+    {
+        if(stateBool)
+        {
+            Active?.Invoke();
+            GainControl();
+        }
+        else
+        {
+            Inactive?.Invoke();
+            ReleaseControl();
+        }
     }
 }

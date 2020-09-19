@@ -14,12 +14,27 @@ public class Health : MonoBehaviour, IKillable, IDamageable<int>
     [SerializeField] int _maxHealth = 100;
     public int MaxHealth { get { return _maxHealth; } set { _maxHealth = value; } }
     [SerializeField] int _currentHealth = 100;
-    public int CurrentHealth { get { return _currentHealth; } set { _currentHealth = value; } }
+    public int CurrentHealth
+    {
+        get
+        {
+            return _currentHealth;
+        }
+        set
+        {
+            if (value > _maxHealth)
+                _currentHealth = _maxHealth;
+            else
+                _currentHealth = value;
+        }
+    }
 
 
     [SerializeField] SkinnedMeshRenderer _bodyRenderer = null;
     [SerializeField] Material _damageMaterial = null;
     [SerializeField] float _flashTime = 1f;
+    [SerializeField] AudioClip _damageSound = null;
+    [SerializeField] AudioClip _deathSound = null;
 
     Coroutine _damageRoutine = null;
 
@@ -44,6 +59,8 @@ public class Health : MonoBehaviour, IKillable, IDamageable<int>
         if (CurrentHealth > 0)
         {
             TookDamage?.Invoke(damageTaken);
+            if (_damageSound != null)
+                AudioHelper.PlayClip2D(_damageSound, 0.75f);
 
         }
         else
@@ -57,6 +74,8 @@ public class Health : MonoBehaviour, IKillable, IDamageable<int>
     public void Kill()
     {
         Died.Invoke();
+        if (_deathSound != null)
+            AudioHelper.PlayClip2D(_deathSound, 0.5f);
     }
 
     // simple flash stuff

@@ -5,8 +5,9 @@ using UnityEngine.UI;
 
 public class UIController : MonoBehaviour
 {
+    [SerializeField] Canvas UIParent = null;
+
     [Header("Ability Components")]
-    [SerializeField] AbilityLoadout _loadoutScript = null;
     [SerializeField] Image _abilityImage = null;
     [SerializeField] Image _fillImage = null;
     [SerializeField] Text _abilityText = null;
@@ -14,30 +15,35 @@ public class UIController : MonoBehaviour
     
 
     [Header("HealthComponents")]
-    [SerializeField] Health _playerHealth = null;
     [SerializeField] Slider _healthSlider = null;
     [SerializeField] Image _healthSliderFill = null;
     [SerializeField] Color _damageColor;
     [SerializeField] Text _healthText = null;
     [SerializeField] Text _changeText = null;
 
+    ThirdPersonMovement _movementScript = null; 
+    AbilityLoadout _loadoutScript = null;
+    Health _playerHealth = null;
+
+    private void Awake()
+    {
+        _movementScript = GetComponent<ThirdPersonMovement>();
+        _loadoutScript = GetComponent<AbilityLoadout>();
+        _playerHealth = GetComponent<Health>();
+    }
+
     #region subscriptions
     private void OnEnable()
     {
-        _loadoutScript.SetAbility += OnEquip;
-        _loadoutScript.Cooldown += UpdateCooldown;
-        _playerHealth.HealthSet += UpdateHealthSlider;
-        _playerHealth.TookDamage += DamageFeedback;
-        _playerHealth.HealthRestored += HealFeedback;
+        _movementScript.Active += CreateUI;
+        _movementScript.Inactive += HideUI;
+        
     }
 
     private void OnDisable()
     {
-        _loadoutScript.SetAbility -= OnEquip;
-        _loadoutScript.Cooldown -= UpdateCooldown;
-        _playerHealth.HealthSet -= UpdateHealthSlider;
-        _playerHealth.TookDamage -= DamageFeedback;
-        _playerHealth.HealthRestored -= HealFeedback;
+        _movementScript.Active -= CreateUI;
+        _movementScript.Inactive -= HideUI;
     }
     #endregion
 
@@ -53,6 +59,33 @@ public class UIController : MonoBehaviour
         _healthSlider.minValue = 0;
         _healthSlider.maxValue = _playerHealth.MaxHealth;
         UpdateHealthSlider(_playerHealth.CurrentHealth);
+    }
+
+
+    void CreateUI()
+    {
+        Debug.Log("Create");
+        UIParent.gameObject.SetActive(true);
+
+        _loadoutScript.SetAbility += OnEquip;
+        _loadoutScript.Cooldown += UpdateCooldown;
+        _playerHealth.HealthSet += UpdateHealthSlider;
+        _playerHealth.TookDamage += DamageFeedback;
+        _playerHealth.HealthRestored += HealFeedback;
+
+        UpdateHealthSlider(_playerHealth.CurrentHealth);
+    }
+
+    void HideUI()
+    {
+        Debug.Log("Hide");
+        UIParent.gameObject.SetActive(false);
+
+        _loadoutScript.SetAbility -= OnEquip;
+        _loadoutScript.Cooldown -= UpdateCooldown;
+        _playerHealth.HealthSet -= UpdateHealthSlider;
+        _playerHealth.TookDamage -= DamageFeedback;
+        _playerHealth.HealthRestored -= HealFeedback;
     }
 
 

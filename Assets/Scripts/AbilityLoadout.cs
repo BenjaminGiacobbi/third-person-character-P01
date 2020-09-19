@@ -30,7 +30,7 @@ public class AbilityLoadout : MonoBehaviour
     float _cooldownTimer = 0;
     float _cooldownMinusCast = 0;
 
-    bool _canUse = true;
+    bool _loadoutActive = false;
 
 
     // caching -- this assumed it's on the same object, might need to fix
@@ -44,20 +44,14 @@ public class AbilityLoadout : MonoBehaviour
     #region subscriptions
     private void OnEnable()
     {
-        _inputScript.LeftClick += StartAbility;
-        _inputScript.RightClick += SetTarget;
-        _movementScript.StartRecoil += RemoveAbilityControl;
-        _movementScript.StopRecoil += ReturnAbilityControl;
-        _movementScript.Death += RemoveAbilityControl;
+        _movementScript.Active += LoadoutActive;
+        _movementScript.Inactive += LoadoutInactive;
     }
 
     private void OnDisable()
     {
-        _inputScript.LeftClick -= StartAbility;
-        _inputScript.RightClick -= SetTarget;
-        _movementScript.StartRecoil -= RemoveAbilityControl;
-        _movementScript.StopRecoil -= ReturnAbilityControl;
-        _movementScript.Death -= RemoveAbilityControl;
+        _movementScript.Active -= LoadoutActive;
+        _movementScript.Inactive -= LoadoutInactive;
     }
     #endregion
 
@@ -107,7 +101,7 @@ public class AbilityLoadout : MonoBehaviour
    // begins the ability activation -- actual ability isn't used here, as this is used to coordinate feedback
     public void StartAbility()
     {
-        if (_cooldownTimer == 0 && EquippedAbility != null && _canUse)
+        if (_cooldownTimer == 0 && EquippedAbility != null && _loadoutActive)
         {
             AbilityFeedback();
 
@@ -117,7 +111,7 @@ public class AbilityLoadout : MonoBehaviour
 
             UseAbilityStart?.Invoke();
         }
-        else
+        else if (_loadoutActive)
         {
             Debug.Log("Ability failed to activate.");
             if(_failAudioObject == null)
@@ -162,15 +156,6 @@ public class AbilityLoadout : MonoBehaviour
         
     }
 
-    void RemoveAbilityControl()
-    {
-        _canUse = false;
-    }
-
-    void ReturnAbilityControl()
-    {
-        _canUse = true;
-    }
 
     // particles use a switch statement because it'd be less wasteful to have particles active on the player than instantiate prefabs
     void AbilityFeedback()
@@ -202,5 +187,36 @@ public class AbilityLoadout : MonoBehaviour
 
             _cooldownTimer = 0;
         }
+    }
+
+    private void RemoveAbilityControl()
+    {
+        _loadoutActive = false;
+    }
+
+
+    private void ReturnAbilityControl()
+    {
+        _loadoutActive = true;
+    }
+
+
+    private void LoadoutActive()
+    {
+        _inputScript.LeftClick += StartAbility;
+        _inputScript.RightClick += SetTarget;
+        _movementScript.StartRecoil += RemoveAbilityControl;
+        _movementScript.StopRecoil += ReturnAbilityControl;
+        ReturnAbilityControl();
+    }
+
+    private void LoadoutInactive()
+    {
+        RemoveAbilityControl();
+        _inputScript.LeftClick -= StartAbility;
+        _inputScript.RightClick -= SetTarget;
+        _movementScript.StartRecoil -= RemoveAbilityControl;
+        _movementScript.StopRecoil -= ReturnAbilityControl;
+        _cooldownTimer = 0;
     }
 }
