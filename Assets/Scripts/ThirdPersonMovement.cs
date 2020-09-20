@@ -240,14 +240,10 @@ public class ThirdPersonMovement : MonoBehaviour
     private void OnControllerColliderHit(ControllerColliderHit hit)
     {
         // TODO offload to a separate script to potentially put recoil on other objects?
-        Damage damage = hit.gameObject.GetComponent<Damage>();
-        if(damage != null && _currentRecoil == 0)
+        if(hit.gameObject.layer == LayerMask.NameToLayer("Enemy") && _currentRecoil == 0)
         {
-            _playerHealth.Damage(damage.DamageAmount);
-
             transform.LookAt(new Vector3(hit.point.x, transform.position.y, hit.point.z));
             _recoilDirection = new Vector3(transform.position.x, transform.position.y + (_controller.height /2), transform.position.z)  - hit.point;
-            damage.ImpactFeedback(hit.point, _recoilDirection);
 
             _canBasic = _canSprint = false;
             _verticalVelocity = 0;
