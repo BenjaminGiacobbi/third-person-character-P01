@@ -18,12 +18,15 @@ public class UIController : MonoBehaviour
     [SerializeField] Slider _healthSlider = null;
     [SerializeField] Image _healthSliderFill = null;
     [SerializeField] Color _damageColor;
+    [SerializeField] float _damageFlashTime = 0;
     [SerializeField] Text _healthText = null;
     [SerializeField] Text _changeText = null;
 
     ThirdPersonMovement _movementScript = null; 
     AbilityLoadout _loadoutScript = null;
     Health _playerHealth = null;
+
+    Coroutine _damageCoroutine = null;
 
     private void Awake()
     {
@@ -112,11 +115,21 @@ public class UIController : MonoBehaviour
 
     private void DamageFeedback(int damageAmount)
     {
-        // start coroutine to flash the bar red for a short time
+        _damageCoroutine = null;
+        _damageCoroutine = StartCoroutine(HealthBarFlash());
     }
 
     private void HealFeedback(int healAmount)
     {
         // something with the numbers here
+    }
+
+    IEnumerator HealthBarFlash()
+    {
+        Color tempColor = _healthSliderFill.color;
+        _healthSliderFill.color = _damageColor;
+        yield return new WaitForSeconds(_damageFlashTime);
+        _healthSliderFill.color = tempColor;
+        _damageCoroutine = null;
     }
 }

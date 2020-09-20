@@ -7,7 +7,7 @@ public class Damage : MonoBehaviour
     [SerializeField] ParticleSystem _impactParticles = null;
     [SerializeField] AudioClip _impactSound = null;
     [SerializeField] int _damageAmount = 10;
-    [SerializeField] float _recoilSpeed = 10f;
+    public int DamageAmount { get { return _damageAmount; } private set { _damageAmount = value; } }
 
     private void Start()
     {
@@ -18,34 +18,12 @@ public class Damage : MonoBehaviour
         }
     }
 
-    private void OnTriggerEnter(Collider other)
-    {
-        Health health = other.gameObject.GetComponent<Health>();
-        if(health != null)
-        {
-            health.Damage(_damageAmount);
-            ImpactFeedback(other.transform.position);
-        }
-
-        // applies damage recoil if possible
-        ThirdPersonMovement movement = other.gameObject.GetComponent<ThirdPersonMovement>();
-        if(movement != null)
-        {
-            movement.DamageRecoil(transform, _recoilSpeed);
-        }
-    }
-
-    void ImpactFeedback(Vector3 feedbackPosition)
+    public void ImpactFeedback(Vector3 feedbackPosition, Vector3 feedbackDirection)
     {
         if (_impactParticles != null)
         {
-            _impactParticles.transform.position = new Vector3
-            ((feedbackPosition.x + transform.position.x) / 2, (transform.position.y), (feedbackPosition.z + transform.position.z) / 2);
-
-
-            Vector2 direction = new Vector2(transform.position.x - feedbackPosition.x, transform.position.z - feedbackPosition.z);
-            float newAngle = Vector2.Angle(direction, new Vector2(transform.forward.x, transform.forward.z));
-            _impactParticles.transform.localEulerAngles = new Vector3(0, newAngle, 0);
+            _impactParticles.transform.position = feedbackPosition;
+            _impactParticles.transform.localRotation = Quaternion.FromToRotation(feedbackPosition, feedbackDirection);
             _impactParticles.Play();
         }
         

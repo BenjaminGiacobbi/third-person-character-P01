@@ -21,10 +21,11 @@ public class ThirdPersonMovement : MonoBehaviour
     public event Action Death = delegate { };
 
     [SerializeField] float _speed = 6f;
-    [SerializeField] float _recoilDecel = 4f;
     [SerializeField] float _slowSpeed = 2f;
     [SerializeField] float _sprintModifier = 2f;
     [SerializeField] float _jumpSpeed = 10f;
+    [SerializeField] float _recoilSpeed = 4f;
+    [SerializeField] float _recoilDecel = 4f;
     [SerializeField] float _fallGravityMultiplier = 1.02f;
     [SerializeField] float _turnSmoothTime = 0.1f;
     [SerializeField] float _landAnimationTime = 0.467f;
@@ -33,7 +34,7 @@ public class ThirdPersonMovement : MonoBehaviour
     private float _turnSmoothVelocity;
     private float _verticalVelocity;
     private float _sprintSpeed = 0;
-    private float _recoilSpeed = 0;
+    private float _currentRecoil = 0;
     private Vector3 _recoilDirection;
 
     // character state flags
@@ -236,41 +237,39 @@ public class ThirdPersonMovement : MonoBehaviour
         IsFalling = false;
     }
 
-    // edits player states to account for recoil, but recoil is primarily handles in a function called from update
-    public void DamageRecoil(Transform damageOrigin, float recoilSpeed)
+    private void OnControllerColliderHit(ControllerColliderHit hit)
     {
-        _canBasic = _canSprint = false;
+        // TODO offload to a separate script to potentially put recoil on other objects?
+        Damage damage = hit.gameObject.GetComponent<Damage>();
+        if(damage != null && _currentRecoil == 0)
+        {
+            _playerHealth.Damage(damage.DamageAmount);
 
-        /*
-        // I wasted thirty minutes screwing up this calculation and then one of my smartass friends said "why not just use LookAt()"
-        Vector2 direction = new Vector2(damageOrigin.position.x - transform.position.x, damageOrigin.position.z - transform.position.z);
-        float newAngle = Vector2.Angle(direction, new Vector2(transform.forward.x, transform.forward.z));
-        transform.localEulerAngles = new Vector3(0, transform.localEulerAngles.y + newAngle, 0);
-        */
-        transform.LookAt(new Vector3(damageOrigin.position.x, transform.position.y, damageOrigin.position.z));
+            transform.LookAt(new Vector3(hit.point.x, transform.position.y, hit.point.z));
+            _recoilDirection = new Vector3(transform.position.x, transform.position.y + (_controller.height /2), transform.position.z)  - hit.point;
+            damage.ImpactFeedback(hit.point, _recoilDirection);
 
-        _verticalVelocity = 0;
-        _recoilDirection = transform.position - damageOrigin.position;
-        _recoilSpeed = recoilSpeed;
-
-        StartRecoil?.Invoke();
+            _canBasic = _canSprint = false;
+            _verticalVelocity = 0;
+            _currentRecoil = _recoilSpeed;
+            StartRecoil?.Invoke();
+        }
     }
-
 
     // applies recoil with a basic timer system according to designer-determined deceleration
     private void CalculateRecoil()
     {
-        if (_recoilSpeed > 0)
+        if (_currentRecoil > 0)
         {
             _controller.Move(new Vector3
-                (_recoilDirection.x * _recoilSpeed, Physics.gravity.y * Time.deltaTime, _recoilDirection.z * _recoilSpeed) * Time.deltaTime);
-            _recoilSpeed -= Time.deltaTime * _recoilDecel;
+                (_recoilDirection.x * _currentRecoil, Physics.gravity.y * Time.deltaTime, _recoilDirection.z * _currentRecoil) * Time.deltaTime);
+            _currentRecoil -= Time.deltaTime * _recoilDecel;
             
-            if(_recoilSpeed <= 0)
+            if(_currentRecoil <= 0)
             {
-                _recoilSpeed = 0;
+                _currentRecoil = 0;
                 if (IsDead)
-                    _deathRoutine = StartCoroutine(DieRoutine());
+                    return;
                 else
                 {
                     _recoilDirection = Vector3.zero;
@@ -285,6 +284,8 @@ public class ThirdPersonMovement : MonoBehaviour
     private void OnDeath()
     {
         IsDead = true;
+        if(_deathRoutine == null)
+            _deathRoutine = StartCoroutine(DieRoutine());
     }
 
 
@@ -303,7 +304,6 @@ public class ThirdPersonMovement : MonoBehaviour
             return false;
     }
 
-
     // this coroutine is used to avoid two-way reference with the animator -- runs based on designer control
     IEnumerator LandRoutine()
     {
@@ -318,9 +318,11 @@ public class ThirdPersonMovement : MonoBehaviour
     // death can't start until the player is grounded
     IEnumerator DieRoutine()
     {
+        yield return new WaitForEndOfFrame();
+
         while (true)
         {
-            if (!Grounded())
+            if (!Grounded() && _recoilSpeed != 0)
             {
                 yield return null;
             }
