@@ -6,6 +6,16 @@ using UnityEngine;
 [RequireComponent(typeof(ThirdPersonMovement))]
 public class PlayerCharacterAnimator : MonoBehaviour
 {
+    [SerializeField] ParticleSystem _movementParticles = null;
+    [SerializeField] float _movementEmissionRate = 10;
+    [SerializeField] float _sprintEmissionModifier = 2;
+
+    [SerializeField] SkinnedMeshRenderer _bodyRenderer = null;
+    [SerializeField] Material _damageMaterial = null;
+    [SerializeField] float _flashTime = 1f;
+    [SerializeField] AudioClip _damageSound = null;
+    [SerializeField] AudioClip _deathSound = null;
+
     // these names are the same as the animation nodes in Mecanim
     const string IdleState = "Idle";
     const string RunState = "Run";
@@ -23,6 +33,8 @@ public class PlayerCharacterAnimator : MonoBehaviour
     AbilityLoadout _abilityScript = null;
 
     Coroutine _damageRoutine = null;
+
+    
 
     // caching
     private void Awake()
@@ -60,21 +72,36 @@ public class PlayerCharacterAnimator : MonoBehaviour
     }
     #endregion
 
+    private void Start()
+    {
+        var emission = _movementParticles.emission;
+        emission.rateOverTime = _movementEmissionRate;
+    }
+
 
     // i have no idea what any of this I'm trying my best alright
     private void OnIdle()
     {
         _animator.CrossFadeInFixedTime(IdleState, .2f);
+        _movementParticles.Stop();
     }
 
     private void OnStartRunning()
     {
         _animator.CrossFadeInFixedTime(RunState, .2f);
+        PlayMovementParticles(_movementEmissionRate);
+    }
+
+    private void OnSprint()
+    {
+        _animator.CrossFadeInFixedTime(SprintState, .2f);
+        PlayMovementParticles(_movementEmissionRate * _sprintEmissionModifier);
     }
 
     private void OnStartJump()
     {
         _animator.Play(JumpState);
+        _movementParticles.Stop();
     }
 
     private void OnLand()
@@ -87,23 +114,47 @@ public class PlayerCharacterAnimator : MonoBehaviour
         _animator.CrossFadeInFixedTime(FallState, .2f);
     }
 
-    private void OnSprint()
-    {
-        _animator.CrossFadeInFixedTime(SprintState, .2f);
-    }
-
     private void OnAbility()
     {
         _animator.CrossFadeInFixedTime(AbilityState, .2f);
+        _movementParticles.Stop();
     }
 
     private void OnRecoil()
     {
         _animator.Play(RecoilState);
+        if (_damageRoutine == null)
+        {
+            _damageRoutine = StartCoroutine(FlashRoutine());
+            if (_damageSound != null)
+                AudioHelper.PlayClip2D(_damageSound, 0.75f);
+        }
+            
     }
 
     private void OnDeath()
     {
         _animator.CrossFadeInFixedTime(DeathState, .2f);
+        if (_deathSound != null)
+            AudioHelper.PlayClip2D(_deathSound, 0.5f);
+    }
+
+    private void PlayMovementParticles(float rate)
+    {
+        var emission = _movementParticles.emission;
+        emission.rateOverTime = rate;
+        _movementParticles.Play();
+    }
+
+    // simple flash stuff
+    IEnumerator FlashRoutine()
+    {
+        Material tempMaterial = _bodyRenderer.material;
+        _bodyRenderer.material = _damageMaterial;
+
+        yield return new WaitForSeconds(_flashTime);
+
+        _bodyRenderer.material = tempMaterial;
+        _damageRoutine = null;
     }
 }

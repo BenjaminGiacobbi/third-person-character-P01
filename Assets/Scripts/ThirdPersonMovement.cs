@@ -22,7 +22,8 @@ public class ThirdPersonMovement : MonoBehaviour
 
     [SerializeField] float _speed = 6f;
     [SerializeField] float _slowSpeed = 2f;
-    [SerializeField] float _sprintModifier = 2f;
+    [SerializeField] float _sprintSpeed = 12f;
+    [SerializeField] float _sprintAcceleration = 2f;
     [SerializeField] float _jumpSpeed = 10f;
     [SerializeField] float _recoilSpeed = 4f;
     [SerializeField] float _recoilDecel = 4f;
@@ -33,7 +34,7 @@ public class ThirdPersonMovement : MonoBehaviour
     // fields for physics calculation
     private float _turnSmoothVelocity;
     private float _verticalVelocity;
-    private float _sprintSpeed = 0;
+    private float _defaultSpeed = 0;
     private float _currentRecoil = 0;
     private Vector3 _recoilDirection;
 
@@ -57,6 +58,7 @@ public class ThirdPersonMovement : MonoBehaviour
     AbilityLoadout _abilityScript;
 
     // coroutine
+    Coroutine _landRoutine = null;
     Coroutine _deathRoutine = null;
 
     // caching
@@ -73,12 +75,13 @@ public class ThirdPersonMovement : MonoBehaviour
     private void Start()
     {
         Idle?.Invoke();
-        _sprintSpeed = _speed * _sprintModifier;
+        _defaultSpeed = _speed;
     }
 
     private void Update()
     {
         CalculateRecoil();
+        CalculateSpeed();
     }
 
     // deactivates player movement as they begin ability
@@ -158,7 +161,6 @@ public class ThirdPersonMovement : MonoBehaviour
         if(!IsSprinting)
         {
             IsSprinting = true;
-            _speed = _sprintSpeed;
         }
             
         if (Grounded() && IsRunning && _canSprint)     
@@ -172,11 +174,31 @@ public class ThirdPersonMovement : MonoBehaviour
         if (IsSprinting)
         {
             IsSprinting = false;
-            _speed = _sprintSpeed / _sprintModifier;
         }
 
         if (Grounded() && IsRunning && _canSprint)
             StartRunning?.Invoke();
+    }
+
+    // adjusts speed by ramping up or down towards a target based on current sprint flag
+    private void CalculateSpeed()
+    {
+        if (!IsJumping && IsRunning)     // speed stays static in mid-air, forces the player to be more mindful
+        {
+            if (_speed < _sprintSpeed && IsSprinting)
+            {
+                _speed += Time.deltaTime * _sprintAcceleration;
+                if (_speed >= _sprintSpeed)
+                    _speed = _sprintSpeed;
+            }
+
+            if (_speed > _defaultSpeed && !IsSprinting)
+            {
+                _speed -= Time.deltaTime * _sprintAcceleration;
+                if (_speed <= _defaultSpeed)
+                    _speed = _defaultSpeed;
+            }
+        }  
     }
 
 
@@ -202,8 +224,11 @@ public class ThirdPersonMovement : MonoBehaviour
     private void CheckIfStoppedMoving()
     {
         if (IsRunning && !IsJumping && _canBasic)
+        {
             Idle?.Invoke();
-
+            _speed = _defaultSpeed;
+        }
+            
         IsRunning = false;
     }
 
@@ -231,7 +256,9 @@ public class ThirdPersonMovement : MonoBehaviour
         if(IsJumping && _canBasic)
         {
             Land?.Invoke();
-            StartCoroutine(LandRoutine());
+
+            if(_landRoutine == null)
+                StartCoroutine(LandRoutine());
         }
         IsJumping = false;
         IsFalling = false;
@@ -303,12 +330,12 @@ public class ThirdPersonMovement : MonoBehaviour
     // this coroutine is used to avoid two-way reference with the animator -- runs based on designer control
     IEnumerator LandRoutine()
     {
-        float temp = _speed;
         _speed = _slowSpeed;
         yield return new WaitForSeconds(_landAnimationTime);
-        _speed = temp;
+        _speed = _defaultSpeed;
 
         NextLogicalState();
+        _landRoutine = null;
     }
 
     // death can't start until the player is grounded

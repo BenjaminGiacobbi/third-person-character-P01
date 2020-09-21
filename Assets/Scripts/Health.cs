@@ -30,14 +30,6 @@ public class Health : MonoBehaviour, IKillable, IDamageable<int>
     }
 
 
-    [SerializeField] SkinnedMeshRenderer _bodyRenderer = null;
-    [SerializeField] Material _damageMaterial = null;
-    [SerializeField] float _flashTime = 1f;
-    [SerializeField] AudioClip _damageSound = null;
-    [SerializeField] AudioClip _deathSound = null;
-
-    Coroutine _damageRoutine = null;
-
     private void Start()
     {
         CurrentHealth = _maxHealth; // this might not be recommended, since you're not always setting to max health
@@ -53,16 +45,10 @@ public class Health : MonoBehaviour, IKillable, IDamageable<int>
     public void Damage(int damageTaken)
     {
         CurrentHealth -= damageTaken;
-        if (_damageRoutine == null)
-            _damageRoutine = StartCoroutine(FlashRoutine());
+        
 
         if (CurrentHealth > 0)
-        {
             TookDamage?.Invoke(damageTaken);
-            if (_damageSound != null)
-                AudioHelper.PlayClip2D(_damageSound, 0.75f);
-
-        }
         else
         {
             CurrentHealth = 0;
@@ -74,19 +60,7 @@ public class Health : MonoBehaviour, IKillable, IDamageable<int>
     public void Kill()
     {
         Died.Invoke();
-        if (_deathSound != null)
-            AudioHelper.PlayClip2D(_deathSound, 0.5f);
     }
 
-    // simple flash stuff
-    IEnumerator FlashRoutine()
-    {
-        Material tempMaterial = _bodyRenderer.material;
-        _bodyRenderer.material = _damageMaterial;
-
-        yield return new WaitForSeconds(_flashTime);
-
-        _bodyRenderer.material = tempMaterial;
-        _damageRoutine = null;
-    }
+    
 }

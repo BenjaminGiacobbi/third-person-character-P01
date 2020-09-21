@@ -25,22 +25,29 @@ public class Damage : MonoBehaviour
         {
             health.Damage(DamageAmount);
 
-            if (_impactSound != null)
-            {
-                AudioHelper.PlayClip2D(_impactSound, 0.25f);
-            }
+            
+        }
+
+        Vector3 raycastDirection = other.transform.position - transform.position;
+        if(Physics.Raycast(transform.position, raycastDirection, out RaycastHit hit, Mathf.Infinity, LayerMask.NameToLayer("Player")))
+        {
+            ImpactFeedback(hit.point);
         }
     }
 
 
     //TODO no way to effective get the impact position at the moment
-    public void ImpactFeedback(Vector3 feedbackPosition, Vector3 feedbackDirection)
+    public void ImpactFeedback(Vector3 feedbackPosition)
     {
         if (_impactParticles != null)
         {
             _impactParticles.transform.position = feedbackPosition;
-            _impactParticles.transform.localRotation = Quaternion.FromToRotation(feedbackPosition, feedbackDirection);
             _impactParticles.Play();
-        }  
+        }
+
+        if (_impactSound != null)
+        {
+            AudioHelper.PlayClip2D(_impactSound, 0.25f);
+        }
     }
 }
