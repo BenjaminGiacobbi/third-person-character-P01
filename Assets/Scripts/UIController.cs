@@ -17,10 +17,14 @@ public class UIController : MonoBehaviour
     [Header("HealthComponents")]
     [SerializeField] Slider _healthSlider = null;
     [SerializeField] Image _healthSliderFill = null;
-    [SerializeField] Color _damageColor;
-    [SerializeField] float _damageFlashTime = 0;
     [SerializeField] Text _healthText = null;
     [SerializeField] Text _changeText = null;
+
+    [Header("DamageComponents")]
+    [SerializeField] Image _damageWindow = null;
+    [SerializeField] Color _damageColor;
+    [SerializeField] float _damageFlashTime = 0;
+    [SerializeField] float _lowHealthBenchmark1 = 0.3f, _lowHealthBenchmark2 = 0.2f, _lowHealthBenchmark3 = 0.1f;
 
     ThirdPersonMovement _movementScript = null; 
     AbilityLoadout _loadoutScript = null;
@@ -111,6 +115,33 @@ public class UIController : MonoBehaviour
     {
         _healthSlider.value = healthToSet;
         _healthText.text = healthToSet.ToString() + " / " + _playerHealth.MaxHealth;
+        UpdateDamageWindow(healthToSet);
+    }
+
+    // manages the damage window health effect // TODO kinda disgusting, fix
+    private void UpdateDamageWindow(int currentHealth)
+    {
+        float healthPercentage = (float)currentHealth / (float)_playerHealth.MaxHealth;
+        if (healthPercentage > _lowHealthBenchmark1)
+        {
+            _damageWindow.gameObject.SetActive(false);
+            _damageWindow.gameObject.transform.localScale = new Vector3(1, 1, 1);
+        }
+        else
+        {
+            if (healthPercentage > _lowHealthBenchmark2)
+            {
+                _damageWindow.gameObject.transform.localScale = new Vector3(1.1f, 1.3f, 1);
+            }
+            else if (healthPercentage > _lowHealthBenchmark3) 
+            {
+                _damageWindow.gameObject.transform.localScale = new Vector3(1.05f, 1.2f, 1);
+            }
+            else
+                _damageWindow.gameObject.transform.localScale = new Vector3(1, 1, 1);
+
+            _damageWindow.gameObject.SetActive(true);
+        }
     }
 
     private void DamageFeedback(int damageAmount)

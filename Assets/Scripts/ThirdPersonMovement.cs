@@ -61,6 +61,8 @@ public class ThirdPersonMovement : MonoBehaviour
     Coroutine _landRoutine = null;
     Coroutine _deathRoutine = null;
 
+    bool _testBool = false;
+
     // caching
     private void Awake()
     {
@@ -138,7 +140,8 @@ public class ThirdPersonMovement : MonoBehaviour
         {
             CheckIfLanded();
             _verticalVelocity = 0;
-            
+
+
             if (jumpAxis > 0 && _canBasic)
                 _verticalVelocity = _jumpSpeed;
         }
@@ -183,7 +186,7 @@ public class ThirdPersonMovement : MonoBehaviour
     // adjusts speed by ramping up or down towards a target based on current sprint flag
     private void CalculateSpeed()
     {
-        if (!IsJumping && IsRunning)     // speed stays static in mid-air, forces the player to be more mindful
+        if (!IsJumping && IsRunning && _canBasic)     // speed stays static in mid-air, forces the player to be more mindful
         {
             if (_speed < _sprintSpeed && IsSprinting)
             {
@@ -208,7 +211,7 @@ public class ThirdPersonMovement : MonoBehaviour
         // prevents overlap with jump animations in the animation controller
         if (!IsRunning && !IsJumping)
         {
-            // this is set first because the sprint event depends on the player being in running state
+            // this is set here as well because the sprint event depends on the player being in running state
             IsRunning = true;
             if (IsSprinting)
                 ApplySprint();
@@ -237,7 +240,10 @@ public class ThirdPersonMovement : MonoBehaviour
     private void CheckIfJumping()
     {
         if (!IsJumping && _canBasic)
+        {
+            Debug.Log("Sending Jump Event");
             StartJump?.Invoke();
+        }
 
         if (_verticalVelocity < 0 && !IsFalling)
         {
@@ -257,9 +263,10 @@ public class ThirdPersonMovement : MonoBehaviour
         {
             Land?.Invoke();
 
-            if(_landRoutine == null)
+            if (_landRoutine == null)
                 StartCoroutine(LandRoutine());
         }
+
         IsJumping = false;
         IsFalling = false;
     }
@@ -313,11 +320,15 @@ public class ThirdPersonMovement : MonoBehaviour
 
 
     // tests for ground using spherecasts
-    // TODO this could use a little more fine tuning for slopes
     bool Grounded()
     {
-        if (Physics.SphereCast(transform.position + _controller.center, _controller.height / 4, -transform.up, out RaycastHit hit, 0.6f))
+        if (Physics.SphereCast(transform.position + _controller.center, _controller.height / 6, -transform.up, out RaycastHit hit, 0.85f))
         {
+            // TODO very simple ground clamping, could use some work
+            if (Vector3.Angle(_controller.transform.forward, hit.normal) > 60 && Vector3.Angle(_controller.transform.forward, hit.normal) < 85)
+            {
+                _controller.Move(new Vector3(0, -10, 0)); 
+            }
             if (hit.collider.gameObject.layer == LayerMask.NameToLayer("Ground"))
                 return true;
             else
@@ -330,12 +341,14 @@ public class ThirdPersonMovement : MonoBehaviour
     // this coroutine is used to avoid two-way reference with the animator -- runs based on designer control
     IEnumerator LandRoutine()
     {
-        _speed = _slowSpeed;
-        yield return new WaitForSeconds(_landAnimationTime);
+        _canBasic = false;
         _speed = _defaultSpeed;
+        yield return new WaitForSeconds(_landAnimationTime);
 
         NextLogicalState();
+        _canBasic = true;
         _landRoutine = null;
+        yield break;
     }
 
     // death can't start until the player is grounded
@@ -421,6 +434,18 @@ public class ThirdPersonMovement : MonoBehaviour
         {
             Inactive?.Invoke();
             ReleaseControl();
+        }
+    }
+
+
+    private void OnDrawGizmos()
+    {
+        if(_testBool)
+        {
+            Vector3 position = transform.position + _controller.center;
+            position = new Vector3(position.x, position.y - 0.85f, position.z);
+            Gizmos.DrawWireSphere(position, _controller.height / 6);
+            _testBool = false;
         }
     }
 }

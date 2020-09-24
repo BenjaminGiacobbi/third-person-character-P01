@@ -25,13 +25,7 @@ public class Damage : MonoBehaviour
         {
             health.Damage(DamageAmount);
 
-            
-        }
-
-        Vector3 raycastDirection = other.transform.position - transform.position;
-        if(Physics.Raycast(transform.position, raycastDirection, out RaycastHit hit, Mathf.Infinity, LayerMask.NameToLayer("Player")))
-        {
-            ImpactFeedback(hit.point);
+            ImpactFeedback(new Vector3(other.gameObject.transform.position.x, other.gameObject.transform.position.y + 1, other.gameObject.transform.position.z));
         }
     }
 

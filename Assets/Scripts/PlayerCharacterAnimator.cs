@@ -6,10 +6,17 @@ using UnityEngine;
 [RequireComponent(typeof(ThirdPersonMovement))]
 public class PlayerCharacterAnimator : MonoBehaviour
 {
+    [Header("Running/Sprinting Feedback")]
+    [SerializeField] AudioClip _footstepSound = null;
     [SerializeField] ParticleSystem _movementParticles = null;
-    [SerializeField] float _movementEmissionRate = 10;
-    [SerializeField] float _sprintEmissionModifier = 2;
+    [SerializeField] float _footstepTime = 0.3f;
+    [SerializeField] float _sprintStepModifier = 2;
 
+    [Header("Jumping/Landing Feedback")]
+    [SerializeField] AudioClip _jumpSound = null;
+    [SerializeField] AudioClip _landSound = null;
+
+    [Header("Damage/Recoil Feedback")]
     [SerializeField] SkinnedMeshRenderer _bodyRenderer = null;
     [SerializeField] Material _damageMaterial = null;
     [SerializeField] float _flashTime = 1f;
@@ -27,12 +34,18 @@ public class PlayerCharacterAnimator : MonoBehaviour
     const string RecoilState = "Recoil";
     const string DeathState = "Death";
 
+    private float _sprintStepTime = 0f;
+
     // animator field
     Animator _animator = null;
     ThirdPersonMovement _movementScript = null;
     AbilityLoadout _abilityScript = null;
 
     Coroutine _damageRoutine = null;
+
+
+    private Coroutine _footstepRoutine = null;
+    private bool _stepRoutineRunning = false;
 
     
 
@@ -74,8 +87,7 @@ public class PlayerCharacterAnimator : MonoBehaviour
 
     private void Start()
     {
-        var emission = _movementParticles.emission;
-        emission.rateOverTime = _movementEmissionRate;
+        _sprintStepTime = _footstepTime / _sprintStepModifier;
     }
 
 
@@ -83,30 +95,50 @@ public class PlayerCharacterAnimator : MonoBehaviour
     private void OnIdle()
     {
         _animator.CrossFadeInFixedTime(IdleState, .2f);
-        _movementParticles.Stop();
+        if(_stepRoutineRunning)
+        {
+            StopCoroutine(_footstepRoutine);
+            _stepRoutineRunning = false;
+        }   
     }
 
     private void OnStartRunning()
     {
         _animator.CrossFadeInFixedTime(RunState, .2f);
-        PlayMovementParticles(_movementEmissionRate);
+        if (!_stepRoutineRunning)
+            _stepRoutineRunning = true;
+        else
+            StopCoroutine(_footstepRoutine);
+        _footstepRoutine = StartCoroutine(StepRoutine(_footstepTime));
+
     }
 
     private void OnSprint()
     {
         _animator.CrossFadeInFixedTime(SprintState, .2f);
-        PlayMovementParticles(_movementEmissionRate * _sprintEmissionModifier);
+        if (_stepRoutineRunning)
+            StopCoroutine(_footstepRoutine);
+        _stepRoutineRunning = true;
+        _footstepRoutine = StartCoroutine(StepRoutine(_sprintStepTime));
     }
 
     private void OnStartJump()
     {
+        Debug.Log("Receive Jump Event");
         _animator.Play(JumpState);
-        _movementParticles.Stop();
+        if (_stepRoutineRunning)
+        {
+            StopCoroutine(_footstepRoutine);
+            _stepRoutineRunning = false;
+        }
+        _movementParticles.Play();
+        AudioHelper.PlayClip2D(_jumpSound, 0.45f);
     }
 
     private void OnLand()
     {
         _animator.Play(LandState);
+        AudioHelper.PlayClip2D(_landSound, 0.35f);
     }
 
     private void OnStartFalling()
@@ -117,12 +149,19 @@ public class PlayerCharacterAnimator : MonoBehaviour
     private void OnAbility()
     {
         _animator.CrossFadeInFixedTime(AbilityState, .2f);
-        _movementParticles.Stop();
+        if (_stepRoutineRunning)
+        {
+            StopCoroutine(_footstepRoutine);
+            _stepRoutineRunning = false;
+        }
     }
 
     private void OnRecoil()
     {
         _animator.Play(RecoilState);
+
+        if (_stepRoutineRunning)
+            StopCoroutine(_footstepRoutine);
         if (_damageRoutine == null)
         {
             _damageRoutine = StartCoroutine(FlashRoutine());
@@ -137,13 +176,23 @@ public class PlayerCharacterAnimator : MonoBehaviour
         _animator.CrossFadeInFixedTime(DeathState, .2f);
         if (_deathSound != null)
             AudioHelper.PlayClip2D(_deathSound, 0.5f);
+
+        if (_stepRoutineRunning)
+        {
+            StopCoroutine(_footstepRoutine);
+            _stepRoutineRunning = false;
+        }  
     }
 
-    private void PlayMovementParticles(float rate)
+    IEnumerator StepRoutine(float stepDelay)
     {
-        var emission = _movementParticles.emission;
-        emission.rateOverTime = rate;
-        _movementParticles.Play();
+        while(true)
+        {
+            yield return new WaitForSeconds(stepDelay);
+
+            _movementParticles.Play();
+            AudioHelper.PlayClip2D(_footstepSound, 0.4f);
+        }
     }
 
     // simple flash stuff
