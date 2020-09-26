@@ -26,6 +26,7 @@ public class AbilityLoadout : MonoBehaviour
     AudioSource _failAudioObject = null;
     PlayerInput _inputScript = null;
     ThirdPersonMovement _movementScript = null;
+    Camera _activeCam = null;
 
     float _cooldownTimer = 0;
     float _cooldownMinusCast = 0;
@@ -38,6 +39,7 @@ public class AbilityLoadout : MonoBehaviour
     {
         _inputScript = GetComponent<PlayerInput>();
         _movementScript = GetComponent<ThirdPersonMovement>();
+        _activeCam = Camera.main;
     }
 
 
@@ -89,10 +91,14 @@ public class AbilityLoadout : MonoBehaviour
     // switches the current target - mostly for testing purposes, as it only has the player and one test object
     public void SetTarget()
     {
+        /*
         if (CurrentTarget == transform)
             CurrentTarget = _testTarget;
         else
             CurrentTarget = transform;
+        */
+
+
 
         Debug.Log("Set Target: " + CurrentTarget.gameObject.name);
     }

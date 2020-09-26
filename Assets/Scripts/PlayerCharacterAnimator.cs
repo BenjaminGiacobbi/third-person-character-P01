@@ -15,6 +15,7 @@ public class PlayerCharacterAnimator : MonoBehaviour
     [Header("Jumping/Landing Feedback")]
     [SerializeField] AudioClip _jumpSound = null;
     [SerializeField] AudioClip _landSound = null;
+    [SerializeField] ParticleSystem _jumpParticles = null;
 
     [Header("Damage/Recoil Feedback")]
     [SerializeField] SkinnedMeshRenderer _bodyRenderer = null;
@@ -131,13 +132,18 @@ public class PlayerCharacterAnimator : MonoBehaviour
             StopCoroutine(_footstepRoutine);
             _stepRoutineRunning = false;
         }
-        _movementParticles.Play();
+        _jumpParticles.transform.localEulerAngles = new Vector3
+            (0, _jumpParticles.transform.localEulerAngles.y, _jumpParticles.transform.localEulerAngles.z);
+        _jumpParticles.Play();
         AudioHelper.PlayClip2D(_jumpSound, 0.45f);
     }
 
     private void OnLand()
     {
         _animator.Play(LandState);
+        _jumpParticles.transform.localEulerAngles = new Vector3
+            (180, _jumpParticles.transform.localEulerAngles.y, _jumpParticles.transform.localEulerAngles.z);
+        _jumpParticles.Play();
         AudioHelper.PlayClip2D(_landSound, 0.35f);
     }
 

@@ -3,6 +3,9 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
+[RequireComponent(typeof(ThirdPersonMovement))]
+[RequireComponent(typeof(AbilityLoadout))]
+[RequireComponent(typeof(Health))]
 public class UIController : MonoBehaviour
 {
     [SerializeField] Canvas UIParent = null;

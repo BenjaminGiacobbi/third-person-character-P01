@@ -20,10 +20,10 @@ public class Damage : MonoBehaviour
 
     private void OnTriggerEnter(Collider other)
     {
-        Health health = other.gameObject.GetComponent<Health>();
-        if (health != null)
+        IDamageable<int> damageable = other.gameObject.GetComponent<IDamageable<int>>();
+        if (damageable != null)
         {
-            health.Damage(DamageAmount);
+            damageable.Damage(DamageAmount);
 
             ImpactFeedback(new Vector3(other.gameObject.transform.position.x, other.gameObject.transform.position.y + 1, other.gameObject.transform.position.z));
         }

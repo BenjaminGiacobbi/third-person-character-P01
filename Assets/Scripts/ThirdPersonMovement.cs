@@ -277,7 +277,12 @@ public class ThirdPersonMovement : MonoBehaviour
         if(hit.gameObject.layer == LayerMask.NameToLayer("Enemy") && _currentRecoil == 0)
         {
             transform.LookAt(new Vector3(hit.point.x, transform.position.y, hit.point.z));
+
+            // clamps recoil direction to get a minimum XZ recoil, prevents player from getting stuck atop an enemy
             _recoilDirection = new Vector3(transform.position.x, transform.position.y + (_controller.height /2), transform.position.z)  - hit.point;
+            float clampX = Mathf.Clamp(Mathf.Abs(_recoilDirection.x), 0.25f, 1f);
+            float clampZ = Mathf.Clamp(Mathf.Abs(_recoilDirection.z), 0.25f, 1f);
+            _recoilDirection = new Vector3(clampX * (_recoilDirection.x > 0 ? 1f : -1f), _recoilDirection.y, clampZ * (_recoilDirection.z > 0 ? 1f : -1f));
 
             _canBasic = _canSprint = false;
             _verticalVelocity = 0;
@@ -322,15 +327,19 @@ public class ThirdPersonMovement : MonoBehaviour
     // tests for ground using spherecasts
     bool Grounded()
     {
-        if (Physics.SphereCast(transform.position + _controller.center, _controller.height / 6, -transform.up, out RaycastHit hit, 0.85f))
+        if (Physics.SphereCast(transform.position + _controller.center, _controller.height / 6, -transform.up, out RaycastHit hit, 0.83f))
         {
-            // TODO very simple ground clamping, could use some work
-            if (Vector3.Angle(_controller.transform.forward, hit.normal) > 60 && Vector3.Angle(_controller.transform.forward, hit.normal) < 85)
-            {
-                _controller.Move(new Vector3(0, -10, 0)); 
-            }
             if (hit.collider.gameObject.layer == LayerMask.NameToLayer("Ground"))
+            {
+                // very simple ground clamping
+                Vector3 equivalentXZ = new Vector3(hit.normal.x, 0, hit.normal.y);
+                if (Vector3.Angle(equivalentXZ, hit.normal) > 60 && Vector3.Angle(equivalentXZ, hit.normal) < 85)
+                {
+                    _controller.Move(new Vector3(0, -20, 0));
+                }
+
                 return true;
+            }
             else
                 return false;
         }
@@ -434,18 +443,6 @@ public class ThirdPersonMovement : MonoBehaviour
         {
             Inactive?.Invoke();
             ReleaseControl();
-        }
-    }
-
-
-    private void OnDrawGizmos()
-    {
-        if(_testBool)
-        {
-            Vector3 position = transform.position + _controller.center;
-            position = new Vector3(position.x, position.y - 0.85f, position.z);
-            Gizmos.DrawWireSphere(position, _controller.height / 6);
-            _testBool = false;
         }
     }
 }
