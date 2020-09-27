@@ -28,12 +28,18 @@ public class UIController : MonoBehaviour
     [SerializeField] Color _damageColor;
     [SerializeField] float _damageFlashTime = 0;
     [SerializeField] float _lowHealthBenchmark1 = 0.3f, _lowHealthBenchmark2 = 0.2f, _lowHealthBenchmark3 = 0.1f;
+    [SerializeField] float _windowXScaleMargin = 0.5f, _windowYScaleMargin = 1f;
+    [SerializeField] AudioClip _heartbeatAudio = null;
 
     ThirdPersonMovement _movementScript = null; 
     AbilityLoadout _loadoutScript = null;
     Health _playerHealth = null;
 
+    float _maxWindowXScale = 1;
+    float _maxWindowYScale = 1;
+
     Coroutine _damageCoroutine = null;
+    Coroutine _windowCoroutine = null;
 
     private void Awake()
     {
@@ -69,6 +75,9 @@ public class UIController : MonoBehaviour
         _healthSlider.minValue = 0;
         _healthSlider.maxValue = _playerHealth.MaxHealth;
         UpdateHealthSlider(_playerHealth.CurrentHealth);
+
+        _maxWindowXScale = 1 + _windowXScaleMargin * 4;
+        _maxWindowYScale = 1 + _windowYScaleMargin * 4;
     }
 
 
@@ -96,6 +105,9 @@ public class UIController : MonoBehaviour
         _playerHealth.HealthSet -= UpdateHealthSlider;
         _playerHealth.TookDamage -= DamageFeedback;
         _playerHealth.HealthRestored -= HealFeedback;
+
+        if (_windowCoroutine != null)
+            StopCoroutine(_windowCoroutine);
     }
 
 
@@ -124,6 +136,10 @@ public class UIController : MonoBehaviour
     // manages the damage window health effect // TODO kinda disgusting, fix
     private void UpdateDamageWindow(int currentHealth)
     {
+        if(_windowCoroutine != null)
+            StopCoroutine(_windowCoroutine);
+
+        // these conversions are listed as redundant, but this does integer division otherwise
         float healthPercentage = (float)currentHealth / (float)_playerHealth.MaxHealth;
         if (healthPercentage > _lowHealthBenchmark1)
         {
@@ -132,17 +148,19 @@ public class UIController : MonoBehaviour
         }
         else
         {
-            if (healthPercentage > _lowHealthBenchmark2)
-            {
-                _damageWindow.gameObject.transform.localScale = new Vector3(1.1f, 1.3f, 1);
-            }
-            else if (healthPercentage > _lowHealthBenchmark3) 
-            {
-                _damageWindow.gameObject.transform.localScale = new Vector3(1.05f, 1.2f, 1);
-            }
-            else
-                _damageWindow.gameObject.transform.localScale = new Vector3(1, 1, 1);
+            float marginMultiplier = 0;
 
+            if (healthPercentage > _lowHealthBenchmark2)
+                marginMultiplier = 3f;
+            else if (healthPercentage > _lowHealthBenchmark3)
+                marginMultiplier = 2f;
+            else
+                marginMultiplier = 1f;
+
+            _damageWindow.gameObject.transform.localScale = new Vector3
+                (1 + _windowXScaleMargin * marginMultiplier, 1 + _windowYScaleMargin * marginMultiplier, 1);
+
+            _windowCoroutine = StartCoroutine(PulseHealthWindow(_damageWindow.gameObject.transform.localScale, 4f - marginMultiplier));
             _damageWindow.gameObject.SetActive(true);
         }
     }
@@ -165,5 +183,36 @@ public class UIController : MonoBehaviour
         yield return new WaitForSeconds(_damageFlashTime);
         _healthSliderFill.color = tempColor;
         _damageCoroutine = null;
+    }
+
+    IEnumerator PulseHealthWindow(Vector3 currentScale, float beatModifier)
+    {
+        float minX = currentScale.x;
+        float minY = currentScale.y;
+
+        while(true)
+        {
+            AudioHelper.PlayClip2D(_heartbeatAudio, 1.5f * beatModifier);
+            Debug.Log("Running");
+            while (currentScale.x < _maxWindowXScale && currentScale.y < _maxWindowYScale)
+            {
+                currentScale.x = BasicCounter.TowardsTarget(currentScale.x, _maxWindowXScale, _windowXScaleMargin * beatModifier * 3f);
+                currentScale.y = BasicCounter.TowardsTarget(currentScale.y, _maxWindowYScale, _windowYScaleMargin * beatModifier * 3f);
+
+                _damageWindow.gameObject.transform.localScale = new Vector3(currentScale.x, currentScale.y, 1);
+                yield return null;
+            }
+
+            yield return new WaitForSeconds(0.25f - (0.05f * beatModifier));
+
+            while (currentScale.x > minX && currentScale.y > minY)
+            {
+                currentScale.x = BasicCounter.TowardsTarget(currentScale.x, minX, _windowXScaleMargin * beatModifier * 3f);
+                currentScale.y = BasicCounter.TowardsTarget(currentScale.y, minY, _windowYScaleMargin * beatModifier * 3f);
+
+                _damageWindow.gameObject.transform.localScale = new Vector3(currentScale.x, currentScale.y, 1);
+                yield return null;
+            }
+        }
     }
 }

@@ -5,7 +5,7 @@ using System;
 
 [RequireComponent(typeof(CharacterController))]
 [RequireComponent(typeof(Health))]
-public class ThirdPersonMovement : MonoBehaviour
+public class ThirdPersonMovement : MonoBehaviour, IRecoil
 {
     public event Action Active = delegate { };
     public event Action Inactive = delegate { };
@@ -25,7 +25,6 @@ public class ThirdPersonMovement : MonoBehaviour
     [SerializeField] float _sprintSpeed = 12f;
     [SerializeField] float _sprintAcceleration = 2f;
     [SerializeField] float _jumpSpeed = 10f;
-    [SerializeField] float _recoilSpeed = 4f;
     [SerializeField] float _recoilDecel = 4f;
     [SerializeField] float _fallGravityMultiplier = 1.02f;
     [SerializeField] float _turnSmoothTime = 0.1f;
@@ -186,22 +185,17 @@ public class ThirdPersonMovement : MonoBehaviour
     // adjusts speed by ramping up or down towards a target based on current sprint flag
     private void CalculateSpeed()
     {
+        if(!IsRunning && Grounded())
+            _speed = _defaultSpeed;
+
         if (!IsJumping && IsRunning && _canBasic)     // speed stays static in mid-air, forces the player to be more mindful
         {
             if (_speed < _sprintSpeed && IsSprinting)
-            {
-                _speed += Time.deltaTime * _sprintAcceleration;
-                if (_speed >= _sprintSpeed)
-                    _speed = _sprintSpeed;
-            }
+                _speed = BasicCounter.TowardsTarget(_speed, _sprintSpeed, _sprintAcceleration);
 
             if (_speed > _defaultSpeed && !IsSprinting)
-            {
-                _speed -= Time.deltaTime * _sprintAcceleration;
-                if (_speed <= _defaultSpeed)
-                    _speed = _defaultSpeed;
-            }
-        }  
+                _speed = BasicCounter.TowardsTarget(_speed, _defaultSpeed, _sprintAcceleration);
+        }
     }
 
 
@@ -229,7 +223,6 @@ public class ThirdPersonMovement : MonoBehaviour
         if (IsRunning && !IsJumping && _canBasic)
         {
             Idle?.Invoke();
-            _speed = _defaultSpeed;
         }
             
         IsRunning = false;
@@ -271,6 +264,7 @@ public class ThirdPersonMovement : MonoBehaviour
         IsFalling = false;
     }
 
+    /*
     private void OnControllerColliderHit(ControllerColliderHit hit)
     {
         // TODO offload to a separate script to potentially put recoil on other objects?
@@ -286,9 +280,26 @@ public class ThirdPersonMovement : MonoBehaviour
 
             _canBasic = _canSprint = false;
             _verticalVelocity = 0;
-            _currentRecoil = _recoilSpeed;
+            _currentRecoil = recoilSpeed;
             StartRecoil?.Invoke();
         }
+    }
+    */
+
+    public void ApplyRecoil(Vector3 recoilOrigin, float recoilSpeed)
+    {
+        transform.LookAt(new Vector3(recoilOrigin.x, transform.position.y, recoilOrigin.z));
+
+        // clamps recoil direction to get a minimum XZ recoil, prevents player from getting stuck atop an enemy
+        _recoilDirection = new Vector3(transform.position.x, transform.position.y + (_controller.height / 2), transform.position.z) - recoilOrigin;
+        float clampX = Mathf.Clamp(Mathf.Abs(_recoilDirection.x), 0.25f, 1f);
+        float clampZ = Mathf.Clamp(Mathf.Abs(_recoilDirection.z), 0.25f, 1f);
+        _recoilDirection = new Vector3(clampX * (_recoilDirection.x > 0 ? 1f : -1f), _recoilDirection.y, clampZ * (_recoilDirection.z > 0 ? 1f : -1f));
+
+        _canBasic = _canSprint = false;
+        _verticalVelocity = 0;
+        _currentRecoil = recoilSpeed;
+        StartRecoil?.Invoke();
     }
 
     // applies recoil with a basic timer system according to designer-determined deceleration
@@ -298,11 +309,10 @@ public class ThirdPersonMovement : MonoBehaviour
         {
             _controller.Move(new Vector3
                 (_recoilDirection.x * _currentRecoil, Physics.gravity.y * Time.deltaTime, _recoilDirection.z * _currentRecoil) * Time.deltaTime);
-            _currentRecoil -= Time.deltaTime * _recoilDecel;
-            
-            if(_currentRecoil <= 0)
+
+            _currentRecoil = BasicCounter.TowardsTarget(_currentRecoil, 0, _recoilDecel);
+            if (_currentRecoil == 0)
             {
-                _currentRecoil = 0;
                 if (IsDead)
                     return;
                 else
@@ -347,7 +357,8 @@ public class ThirdPersonMovement : MonoBehaviour
             return false;
     }
 
-    // this coroutine is used to avoid two-way reference with the animator -- runs based on designer control
+
+    // this coroutine is used to avoid two-way reference with the animator, runs according to designer control
     IEnumerator LandRoutine()
     {
         _canBasic = false;
@@ -360,6 +371,7 @@ public class ThirdPersonMovement : MonoBehaviour
         yield break;
     }
 
+
     // death can't start until the player is grounded
     IEnumerator DieRoutine()
     {
@@ -367,7 +379,7 @@ public class ThirdPersonMovement : MonoBehaviour
 
         while (true)
         {
-            if (!Grounded() && _recoilSpeed != 0)
+            if (!Grounded() && _currentRecoil != 0)
             {
                 yield return null;
             }
@@ -396,6 +408,7 @@ public class ThirdPersonMovement : MonoBehaviour
             Idle?.Invoke();
     }
 
+
     private void GainControl()
     {
         if(!IsActive)
@@ -415,6 +428,7 @@ public class ThirdPersonMovement : MonoBehaviour
         NextLogicalState();
     }
 
+
     private void ReleaseControl()
     {
         if(IsActive)
@@ -431,6 +445,7 @@ public class ThirdPersonMovement : MonoBehaviour
         _canBasic = _canSprint = IsActive = false;
         NextLogicalState();
     }
+
 
     public void ActivePlayer(bool stateBool)
     {

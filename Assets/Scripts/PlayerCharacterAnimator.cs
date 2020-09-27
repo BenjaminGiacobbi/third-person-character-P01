@@ -16,6 +16,7 @@ public class PlayerCharacterAnimator : MonoBehaviour
     [SerializeField] AudioClip _jumpSound = null;
     [SerializeField] AudioClip _landSound = null;
     [SerializeField] ParticleSystem _jumpParticles = null;
+    [SerializeField] ParticleSystem _trailParticles = null;
 
     [Header("Damage/Recoil Feedback")]
     [SerializeField] SkinnedMeshRenderer _bodyRenderer = null;
@@ -49,8 +50,6 @@ public class PlayerCharacterAnimator : MonoBehaviour
     private bool _stepRoutineRunning = false;
 
     
-
-    // caching
     private void Awake()
     {
         _animator = GetComponent<Animator>();
@@ -86,88 +85,84 @@ public class PlayerCharacterAnimator : MonoBehaviour
     }
     #endregion
 
+
     private void Start()
     {
         _sprintStepTime = _footstepTime / _sprintStepModifier;
     }
 
 
-    // i have no idea what any of this I'm trying my best alright
     private void OnIdle()
     {
+        ClearFeedback();
         _animator.CrossFadeInFixedTime(IdleState, .2f);
-        if(_stepRoutineRunning)
-        {
-            StopCoroutine(_footstepRoutine);
-            _stepRoutineRunning = false;
-        }   
     }
+
 
     private void OnStartRunning()
     {
         _animator.CrossFadeInFixedTime(RunState, .2f);
-        if (!_stepRoutineRunning)
-            _stepRoutineRunning = true;
-        else
-            StopCoroutine(_footstepRoutine);
+
+        ClearFeedback();
         _footstepRoutine = StartCoroutine(StepRoutine(_footstepTime));
 
     }
 
+
     private void OnSprint()
     {
         _animator.CrossFadeInFixedTime(SprintState, .2f);
-        if (_stepRoutineRunning)
-            StopCoroutine(_footstepRoutine);
-        _stepRoutineRunning = true;
+
+        ClearFeedback();
         _footstepRoutine = StartCoroutine(StepRoutine(_sprintStepTime));
     }
 
+
     private void OnStartJump()
     {
-        Debug.Log("Receive Jump Event");
+        ClearFeedback();
+
         _animator.Play(JumpState);
-        if (_stepRoutineRunning)
-        {
-            StopCoroutine(_footstepRoutine);
-            _stepRoutineRunning = false;
-        }
+        
         _jumpParticles.transform.localEulerAngles = new Vector3
             (0, _jumpParticles.transform.localEulerAngles.y, _jumpParticles.transform.localEulerAngles.z);
         _jumpParticles.Play();
+        _trailParticles.Play();
         AudioHelper.PlayClip2D(_jumpSound, 0.45f);
     }
+
 
     private void OnLand()
     {
         _animator.Play(LandState);
+
         _jumpParticles.transform.localEulerAngles = new Vector3
             (180, _jumpParticles.transform.localEulerAngles.y, _jumpParticles.transform.localEulerAngles.z);
         _jumpParticles.Play();
+        _trailParticles.Stop();
         AudioHelper.PlayClip2D(_landSound, 0.35f);
     }
+
 
     private void OnStartFalling()
     {
         _animator.CrossFadeInFixedTime(FallState, .2f);
     }
 
+
     private void OnAbility()
     {
         _animator.CrossFadeInFixedTime(AbilityState, .2f);
-        if (_stepRoutineRunning)
-        {
-            StopCoroutine(_footstepRoutine);
-            _stepRoutineRunning = false;
-        }
+        ClearFeedback();
     }
+
 
     private void OnRecoil()
     {
         _animator.Play(RecoilState);
+        ClearFeedback();
+        _trailParticles.Play();
 
-        if (_stepRoutineRunning)
-            StopCoroutine(_footstepRoutine);
         if (_damageRoutine == null)
         {
             _damageRoutine = StartCoroutine(FlashRoutine());
@@ -177,18 +172,23 @@ public class PlayerCharacterAnimator : MonoBehaviour
             
     }
 
+
     private void OnDeath()
     {
         _animator.CrossFadeInFixedTime(DeathState, .2f);
         if (_deathSound != null)
             AudioHelper.PlayClip2D(_deathSound, 0.5f);
-
-        if (_stepRoutineRunning)
-        {
-            StopCoroutine(_footstepRoutine);
-            _stepRoutineRunning = false;
-        }  
+        ClearFeedback();
     }
+
+
+    private void ClearFeedback()
+    {
+        if (_footstepRoutine != null)
+            StopCoroutine(_footstepRoutine);
+        _trailParticles.Stop();
+    }
+
 
     IEnumerator StepRoutine(float stepDelay)
     {
@@ -200,6 +200,7 @@ public class PlayerCharacterAnimator : MonoBehaviour
             AudioHelper.PlayClip2D(_footstepSound, 0.4f);
         }
     }
+
 
     // simple flash stuff
     IEnumerator FlashRoutine()

@@ -7,6 +7,7 @@ public class Damage : MonoBehaviour
     [SerializeField] ParticleSystem _impactParticles = null;
     [SerializeField] AudioClip _impactSound = null;
     [SerializeField] int _damageAmount = 10;
+    [SerializeField] float _recoilSpeed = 35f;
     public int DamageAmount { get { return _damageAmount; } private set { _damageAmount = value; } }
 
     private void Start()
@@ -25,8 +26,13 @@ public class Damage : MonoBehaviour
         {
             damageable.Damage(DamageAmount);
 
-            ImpactFeedback(new Vector3(other.gameObject.transform.position.x, other.gameObject.transform.position.y + 1, other.gameObject.transform.position.z));
+            ImpactFeedback(new Vector3
+                (other.gameObject.transform.position.x, other.gameObject.transform.position.y + 1, other.gameObject.transform.position.z));
         }
+
+        IRecoil recoil = other.gameObject.GetComponent<IRecoil>();
+        if(recoil != null)
+            recoil.ApplyRecoil(transform.position, _recoilSpeed);
     }
 
 

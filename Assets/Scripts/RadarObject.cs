@@ -5,7 +5,7 @@ using UnityEngine.UI;
 
 [RequireComponent(typeof(CanvasGroup))]
 [RequireComponent(typeof(RectTransform))]
-public class RadarObject : MonoBehaviour
+public class RadarObject : UIObject
 {
     [SerializeField] float _startingOpacity = 0.4f;
     [SerializeField] float _fadeSpeed = 5f;
@@ -13,17 +13,9 @@ public class RadarObject : MonoBehaviour
     [SerializeField] float _flashTime = 0.2f;
     [SerializeField] Image _flashImage = null;
 
-
-    // components to modify behavior
-    Camera _activeCamera;
-    Transform _followTransform;
-    Transform _playerTransform;
-
     // components to modify image
     CanvasGroup _canvasGroup;
     CanvasRenderer _childRenderer;
-    RectTransform _rectTransform;
-
 
     Coroutine _fadeRoutine = null;
     Coroutine _flashRoutine = null;
@@ -32,22 +24,17 @@ public class RadarObject : MonoBehaviour
     // caching
     private void Awake()
     {
-        _activeCamera = Camera.main;
         _canvasGroup = GetComponent<CanvasGroup>();
-        _childRenderer = _flashImage.gameObject.GetComponent<CanvasRenderer>(); // this is the only way I could get this component to flash the child image
-                                                                                // TODO FIX
+        _childRenderer = _flashImage.gameObject.GetComponent<CanvasRenderer>(); 
         _rectTransform = GetComponent<RectTransform>();
     }
 
 
     // used to set the object's life and behavior
-    public void ActivateObject(Transform objectTransform, Transform playerTransform, float lifetime)
+    public override void ActivateObject(Transform objectTransform, Transform playerTransform, float lifetime)
     {
+        base.ActivateObject(objectTransform, playerTransform);
         _canvasGroup.alpha = _startingOpacity;
-        _childRenderer.SetAlpha(0);
-        _followTransform = objectTransform;
-        _playerTransform = playerTransform;
-        gameObject.SetActive(true);
 
 
         if (_fadeRoutine == null)
@@ -60,13 +47,8 @@ public class RadarObject : MonoBehaviour
     // updates position every frame to follow correct object
     void Update()
     {
-        if (_followTransform != null && _activeCamera != null)
-        {
-            Vector3 newPosition = _activeCamera.WorldToScreenPoint(_followTransform.position);
-            transform.position = new Vector3(newPosition.x, newPosition.y, 0);
-        }
+        base.FollowObject();
     }
-
 
     // I based this off of one of Chandler's dev tools. Writing this so he doesn't think I'm trying to be sneaky
     IEnumerator FadeOutCycle(float fadeTime)
@@ -100,10 +82,7 @@ public class RadarObject : MonoBehaviour
         // animates towards full opacity
         while (timer < _flashTime)
         {
-            timer += Time.deltaTime;
-            
-            if (timer >= _flashTime)
-                timer = _flashTime;
+            timer = BasicCounter.TowardsTarget(timer, _flashTime, 1f);
 
             _childRenderer.SetAlpha(timer / _flashTime);
 
@@ -113,10 +92,7 @@ public class RadarObject : MonoBehaviour
         // animates towards full transparency
         while (timer > 0)
         {
-            timer -= Time.deltaTime;
-
-            if (timer <= 0)
-                timer = 0;
+            timer = BasicCounter.TowardsTarget(timer, 0f, 1f);
 
             _childRenderer.SetAlpha(timer / _flashTime);
 

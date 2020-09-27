@@ -35,12 +35,14 @@ public class Health : MonoBehaviour, IKillable, IDamageable<int>
         CurrentHealth = _maxHealth; // this might not be recommended, since you're not always setting to max health
     }
 
+
     public void Heal(int amountHealed)
     {
         CurrentHealth += amountHealed;
         HealthRestored?.Invoke(amountHealed);
         HealthSet?.Invoke(CurrentHealth);
     }
+
 
     public void Damage(int damageTaken)
     {
@@ -57,10 +59,9 @@ public class Health : MonoBehaviour, IKillable, IDamageable<int>
         HealthSet?.Invoke(CurrentHealth);
     }
 
+
     public void Kill()
     {
         Died.Invoke();
-    }
-
-    
+    } 
 }

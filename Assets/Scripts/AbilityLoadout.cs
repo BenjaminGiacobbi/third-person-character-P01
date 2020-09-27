@@ -1,40 +1,51 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UI;
 using System;
+
 
 public class AbilityLoadout : MonoBehaviour
 {
-
+    [SerializeField] Ability _defaultAbility = null;
     public Ability EquippedAbility { get { return _defaultAbility; } set { _defaultAbility = value; } }
     public Transform CurrentTarget { get; private set; }
+    public bool IsTargeting { get; private set; } = false;
 
     public event Action<string, Color, Sprite> SetAbility = delegate { };
     public event Action UseAbilityStart = delegate { };
     public event Action UseAbilityStop = delegate { };
     public event Action<float, float> Cooldown = delegate { };
 
-
-    [SerializeField] Transform _testTarget = null;
+    [Header("Ability Feedback")]
     [SerializeField] ParticleBase _radarParticles = null;
     [SerializeField] ParticleBase _fireParticles = null;
     [SerializeField] ParticleBase _cureParticles = null;
-    [SerializeField] Ability _defaultAbility = null;
     [SerializeField] AudioClip _abilityFailSound = null;
 
+    [Header("Targeting System Feedback")]
+    [SerializeField] GameObject _targetObjectPrefab = null;
+    [SerializeField] Transform _defaultTarget = null;
+    [SerializeField] Canvas _mainUICanvas = null;
+    [SerializeField] AudioClip _targetLockedSound = null;
+    [SerializeField] AudioClip _targetCancelSound = null;
+    [SerializeField] float _targetRange = 20f;
 
-    AudioSource _failAudioObject = null;
     PlayerInput _inputScript = null;
     ThirdPersonMovement _movementScript = null;
     Camera _activeCam = null;
 
+    AudioSource _failAudioObject = null;
+    List<Collider> colliderList = new List<Collider>();
     float _cooldownTimer = 0;
     float _cooldownMinusCast = 0;
 
-    bool _loadoutActive = false;
+    private bool _loadoutActive = false;
+    private int _targetIndex = 0;
+    
 
 
-    // caching -- this assumed it's on the same object, might need to fix
+    // this assumed it's on the same object, might need to fix
     private void Awake()
     {
         _inputScript = GetComponent<PlayerInput>();
@@ -63,10 +74,13 @@ public class AbilityLoadout : MonoBehaviour
     {
         // equips default ability
         if (_defaultAbility != null)
-        {
             EquipAbility(_defaultAbility);
-        }
-        CurrentTarget = transform;
+
+        CurrentTarget = _defaultTarget;
+        _targetObjectPrefab = Instantiate(_targetObjectPrefab, _mainUICanvas.transform);
+        _targetObjectPrefab.transform.SetSiblingIndex(0);
+        _targetObjectPrefab.SetActive(false);
+        _cooldownMinusCast = 0.1f;
     }
 
 
@@ -83,83 +97,52 @@ public class AbilityLoadout : MonoBehaviour
         Debug.Log(EquippedAbility);
 
         SetAbility?.Invoke(EquippedAbility.abilityName, EquippedAbility.abilityColor, EquippedAbility.abilitySprite);
+        _cooldownMinusCast = EquippedAbility.cooldown - EquippedAbility.castTime;
         EquippedAbility.Setup();
         
     }
 
-
-    // switches the current target - mostly for testing purposes, as it only has the player and one test object
-    public void SetTarget()
-    {
-        /*
-        if (CurrentTarget == transform)
-            CurrentTarget = _testTarget;
-        else
-            CurrentTarget = transform;
-        */
-
-
-
-        Debug.Log("Set Target: " + CurrentTarget.gameObject.name);
-    }
-
-
-   // begins the ability activation -- actual ability isn't used here, as this is used to coordinate feedback
+   // actual ability isn't used here, as this is used to coordinate feedback
     public void StartAbility()
     {
         if (_cooldownTimer == 0 && EquippedAbility != null && _loadoutActive)
         {
             AbilityFeedback();
 
-            // sets timers
-            _cooldownMinusCast = EquippedAbility.cooldown - EquippedAbility.castTime;
             _cooldownTimer = EquippedAbility.cooldown;
 
             UseAbilityStart?.Invoke();
         }
         else if (_loadoutActive)
         {
-            Debug.Log("Ability failed to activate.");
             if(_failAudioObject == null)
                 _failAudioObject = AudioHelper.PlayClip2D(_abilityFailSound, 0.35f);
         }
     }
 
 
-    // TODO I do not like this, super messy, fix
     void UpdateAbilityState()
     {
-        // timers
         if(_cooldownTimer > 0)
         {
-            // signals that the cast itself has finished and casts the ability
+            // Segmenting this timner allows for abilities to be expressly canceled by damage/other systems
             if (_cooldownTimer > _cooldownMinusCast)
             {
-                _cooldownTimer -= Time.deltaTime;
+                _cooldownTimer = BasicCounter.TowardsTarget(_cooldownTimer, _cooldownMinusCast, 1f);
 
-                if (_cooldownTimer <= _cooldownMinusCast)
+                if (_cooldownTimer == _cooldownMinusCast)
                 {
-                    _cooldownTimer = _cooldownMinusCast;
                     UseAbilityStop?.Invoke();
-
                     EquippedAbility.Use(transform, CurrentTarget);
                 }
             }
 
             // finished countdown
             else if (_cooldownTimer <= _cooldownMinusCast)
-            {
-                _cooldownTimer -= Time.deltaTime;
-                if (_cooldownTimer <= 0)
-                {
-                    _cooldownTimer = 0;
-                }
-                    
-            }
+                _cooldownTimer = BasicCounter.TowardsTarget(_cooldownTimer, 0, 1f);
 
             Cooldown?.Invoke(_cooldownTimer, EquippedAbility.cooldown);
         }
-        
     }
 
 
@@ -181,10 +164,101 @@ public class AbilityLoadout : MonoBehaviour
     }
 
 
+    // resets the target list and finds the closest target
+    void ResetTargetList()
+    {
+        colliderList.Clear();
+
+        if (!IsTargeting)
+        {
+            Collider[] colliders = Physics.OverlapSphere(_activeCam.transform.position, _targetRange);
+            foreach (Collider collider in colliders)
+            {
+                Vector3 targetPoint = _activeCam.WorldToViewportPoint(collider.transform.position);
+
+                // this doesn't NEED to be two if statements but it looks disgusting if it isn't
+                if (targetPoint.x > 0 && targetPoint.z > 0 && targetPoint.y > 0 && targetPoint.x < 1 && targetPoint.y < 1 &&
+                    collider.gameObject.layer == LayerMask.NameToLayer("Enemy"))
+                {
+                    if (RaycastTool.RaycastToObject
+                        (collider.transform.position, _activeCam.transform.position, LayerMask.NameToLayer("Enemy"), LayerMask.NameToLayer("Player")))
+                    {
+                        colliderList.Add(collider);
+                    }
+                }
+            }
+
+            if (colliderList.Count > 0)
+            {
+                float closestDistance = Mathf.Infinity;
+
+                // runs through list and places the shortest distance at the front of the list
+                for (int i = 0; i < colliderList.Count; i++)
+                {
+                    float currentDistance = Vector3.Distance(colliderList[i].gameObject.transform.position, transform.position);
+                    if (currentDistance < closestDistance)
+                    {
+                        closestDistance = currentDistance;
+                        Collider tempCollider = colliderList[0];
+                        colliderList[0] = colliderList[i];
+                        colliderList[i] = tempCollider;
+                    }
+                }
+
+                _targetIndex = 0;
+                IsTargeting = true;
+                ChangeTarget(0);
+            }
+        }
+        else
+        {
+            IsTargeting = false;
+            CurrentTarget = _defaultTarget;
+            AudioHelper.PlayClip2D(_targetCancelSound, 0.5f);
+            _targetObjectPrefab.SetActive(false);
+        }
+    }
+
+
+    // switches targets in the current target list
+    public void ChangeTarget(float scrollAxis)
+    {
+        if (IsTargeting && _cooldownTimer < _cooldownMinusCast)
+        {
+            if (scrollAxis > 0)
+            {
+                _targetIndex++;
+                if (_targetIndex >= colliderList.Count)
+                    _targetIndex = 0;
+            }
+            else if (scrollAxis < 0)
+            {
+                _targetIndex--;
+                if (_targetIndex < 0)
+                    _targetIndex = colliderList.Count - 1;
+            }
+
+
+            Vector3 targetPoint = _activeCam.WorldToViewportPoint(colliderList[_targetIndex].transform.position);
+            if (targetPoint.x > 0 && targetPoint.z > 0 && targetPoint.y > 0 && targetPoint.x < 1 && targetPoint.y < 1)
+            {
+                CurrentTarget = colliderList[_targetIndex].transform;
+                _targetObjectPrefab.GetComponent<UIObject>()?.ActivateObject(CurrentTarget);
+                _targetObjectPrefab.SetActive(true);
+                AudioHelper.PlayClip2D(_targetLockedSound, 0.5f);
+            }
+            else
+            {
+                ResetTargetList();
+            }
+
+        }
+    }
+
+
     // collects pickups automatically when they make contact with the player's main collider
     public void OnTriggerEnter(Collider other)
     {
-        // searches for ability pickup and gets reference to the ability property of the object
         AbilityPickup pickup = other.gameObject.GetComponent<AbilityPickup>();
         if(pickup != null)
         {
@@ -210,7 +284,8 @@ public class AbilityLoadout : MonoBehaviour
     private void LoadoutActive()
     {
         _inputScript.LeftClick += StartAbility;
-        _inputScript.RightClick += SetTarget;
+        _inputScript.RightClick += ResetTargetList;
+        _inputScript.Scroll += ChangeTarget;
         _movementScript.StartRecoil += RemoveAbilityControl;
         _movementScript.StopRecoil += ReturnAbilityControl;
         ReturnAbilityControl();
@@ -220,7 +295,8 @@ public class AbilityLoadout : MonoBehaviour
     {
         RemoveAbilityControl();
         _inputScript.LeftClick -= StartAbility;
-        _inputScript.RightClick -= SetTarget;
+        _inputScript.RightClick -= ResetTargetList;
+        _inputScript.Scroll -= ChangeTarget;
         _movementScript.StartRecoil -= RemoveAbilityControl;
         _movementScript.StopRecoil -= ReturnAbilityControl;
         _cooldownTimer = 0;

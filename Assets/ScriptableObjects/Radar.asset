@@ -20,7 +20,7 @@ MonoBehaviour:
   cooldown: 15
   startSound: {fileID: 8300000, guid: 88faa70af67d1ad4ab6354f09d0c64c8, type: 3}
   activeSound: {fileID: 8300000, guid: 1defaf9ce6926f943b071b0dd3f72446, type: 3}
-  _enemyRadarPrefab: {fileID: 7868688531836899775, guid: 9e19c8648ec08c841b95e354bce88350,
+  _radarObjectPrefab: {fileID: 7868688531836899775, guid: 9e19c8648ec08c841b95e354bce88350,
     type: 3}
   _radarCanvas: {fileID: 5752987887481228026, guid: 429db26cc9358164cba6f5b6f1ec1ee8,
     type: 3}

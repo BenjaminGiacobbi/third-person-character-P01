@@ -5,7 +5,7 @@ using UnityEngine;
 [CreateAssetMenu(fileName = "Radar")]
 public class Radar : Ability
 {
-    [SerializeField] GameObject _enemyRadarPrefab = null;
+    [SerializeField] GameObject _radarObjectPrefab = null;
     [SerializeField] Canvas _radarCanvas = null;
     [SerializeField] float _radarRange = 20f;
     [SerializeField] int _poolSize = 20;
@@ -16,24 +16,22 @@ public class Radar : Ability
 
     public override void Setup()
     {
-        // this is required because the list will otherwise accumulate items
-        _objectList.Clear();
+        _objectList.Clear();    // since it's Scriptable Objects, this prevents data from accumulating 
 
 
         _activeCam = Camera.main;
-        Canvas newRadarCanvas = Instantiate(_radarCanvas);     // NEED A WAY TO FIND THIS CANVAS because scriptable object doesn't have monobehavior
+        Canvas newRadarCanvas = Instantiate(_radarCanvas);
 
 
         // populates object pool
         for (int i = 0; i < _poolSize; i++)
         {
-            GameObject newObject = Instantiate(_enemyRadarPrefab, newRadarCanvas.transform);
+            GameObject newObject = Instantiate(_radarObjectPrefab, newRadarCanvas.transform);
             newObject.gameObject.SetActive(false);
             _objectList.Add(newObject);
         }
-
-        
     }
+
 
     public override void Use(Transform origin, Transform target)
     {
@@ -44,15 +42,14 @@ public class Radar : Ability
         // search that found colliders are within the camera's view and draws radar prefab if something is in the way
         for (int i = 0, j = 0; i < colliders.Length; i++)
         {
-            // TODO add some control over searchable object types, maybe make an enum or something as part of the scriptable object
-            // make this whole thing be a function as well?
             Vector3 targetPoint = _activeCam.WorldToViewportPoint(colliders[i].transform.position);
             if (targetPoint.x > 0 && targetPoint.z > 0 && targetPoint.y > 0 && targetPoint.x < 1 && targetPoint.y < 1 &&
                 colliders[i].gameObject.layer == LayerMask.NameToLayer("Enemy") &&
-                !RaycastToObject(colliders[i].transform.position, _activeCam.transform.position, LayerMask.NameToLayer("Enemy")))
+                !RaycastTool.RaycastToObject
+                (colliders[i].transform.position, _activeCam.transform.position, LayerMask.NameToLayer("Enemy"), LayerMask.NameToLayer("Player")))
             
             {
-                _objectList[j].GetComponent<RadarObject>().ActivateObject(colliders[i].transform, origin, duration);
+                _objectList[j].GetComponent<UIObject>()?.ActivateObject(colliders[i].transform, origin, duration);
                 j++; 
             }
         }
@@ -64,21 +61,5 @@ public class Radar : Ability
             AudioHelper.PlayClip2D(startSound, 0.35f);
             AudioHelper.PlayClip2D(activeSound, 0.2f);
         }
-    }
-
-    // tests if there is an object between origin and raycast target
-    public bool RaycastToObject(Vector3 objectPosition, Vector3 firePosition, LayerMask mask)
-    {
-        if (Physics.Raycast(firePosition, objectPosition - firePosition, out RaycastHit hit, Vector3.Distance(firePosition, objectPosition)))
-        {
-            if (hit.collider.gameObject.layer == mask)
-                return true;
-            else
-                return false;
-        }
-
-        // technically this shouldn't be possible?
-        else
-            return false;
     }
 }

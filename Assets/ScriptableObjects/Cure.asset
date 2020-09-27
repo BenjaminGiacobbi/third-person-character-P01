@@ -20,4 +20,4 @@ MonoBehaviour:
   cooldown: 10
   startSound: {fileID: 8300000, guid: 3662f57e3374c1a46bb367150f93f975, type: 3}
   activeSound: {fileID: 0}
-  _healAmount: 5
+  _healAmount: 15

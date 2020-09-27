@@ -14,15 +14,15 @@ public class Cure : Ability
 
     public override void Use(Transform origin, Transform target)
     {
-        // cure behavior
         if (target == null)
         {
             Debug.Log("Cannot cast cure without a target!");
             return;
         }
             
-        Debug.Log("Cure " + _healAmount + " on " + target.gameObject.name);
+        // searches both objects just in case
         target.GetComponent<Health>()?.Heal(_healAmount);
+        target.GetComponentInParent<Health>()?.Heal(_healAmount);
         AudioHelper.PlayClip2D(startSound, 0.35f);
     }
 }

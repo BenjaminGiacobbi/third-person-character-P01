@@ -9,7 +9,7 @@ public class Fireball : Ability
     [SerializeField] int _poolSize = 3;
     List<GameObject> _objectList;
 
-    // TODO create an object pooling system here - same problem as Radar, no monobehavior so no easily accessible parent
+    // TODO create an object pooling system here
     public override void Setup()
     {
 
@@ -23,7 +23,7 @@ public class Fireball : Ability
         {
             // instantiates, targets, sets to destroy
             GameObject spawnedFireball = Instantiate
-                (_fireballProjectile, new Vector3(origin.position.x, origin.position.y, origin.position.z), Quaternion.identity);
+                (_fireballProjectile, new Vector3(origin.position.x, origin.position.y + 1, origin.position.z), Quaternion.identity);
 
 
             spawnedFireball.transform.LookAt(target);

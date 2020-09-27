@@ -12,6 +12,8 @@ public class PlayerInput : MonoBehaviour
     public event Action StopSprint = delegate { };
     public event Action LeftClick = delegate { };
     public event Action RightClick = delegate { };
+    public event Action<float> Scroll = delegate { };
+
 
     private void Update()
     {
@@ -20,6 +22,7 @@ public class PlayerInput : MonoBehaviour
         SprintInput();
         Mouse0Input();
         Mouse1Input();
+        ScrollInput();
     }
 
 
@@ -29,7 +32,6 @@ public class PlayerInput : MonoBehaviour
         float vertical = Input.GetAxisRaw("Vertical");
 
 
-        // combines as Vector3 and sends
         Vector3 direction = new Vector3(horizontal, 0f, vertical).normalized;
         Move?.Invoke(direction);
     }
@@ -53,16 +55,24 @@ public class PlayerInput : MonoBehaviour
     }
 
 
-    public void Mouse0Input()
+    private void Mouse0Input()
     {
         if (Input.GetKeyDown(KeyCode.Mouse0))
             LeftClick?.Invoke();
     }
 
 
-    public void Mouse1Input()
+    private void Mouse1Input()
     {
         if (Input.GetKeyDown(KeyCode.Mouse1))
             RightClick?.Invoke();
+    }
+
+
+    private void ScrollInput()
+    {
+        float scrollFloat = Input.GetAxisRaw("Scroll");
+        if (scrollFloat != 0)
+            Scroll?.Invoke(scrollFloat);
     }
 }

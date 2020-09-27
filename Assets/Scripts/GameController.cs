@@ -9,15 +9,18 @@ public class GameController : MonoBehaviour
     [SerializeField] ThirdPersonMovement player = null;
     [SerializeField] Canvas gameOverCanvas = null;
 
+
     private void OnEnable()
     {
         player.Death += OnGameOver;
     }
 
+
     private void OnDisable()
     {
         player.Death -= OnGameOver;
     }
+
 
     private void Start()
     {
@@ -25,7 +28,7 @@ public class GameController : MonoBehaviour
         gameOverCanvas.gameObject.SetActive(false);
     }
 
-    // Update is called once per frame
+
     void Update()
     {
         // restarts scene
@@ -41,6 +44,7 @@ public class GameController : MonoBehaviour
         if (Input.GetKeyDown(KeyCode.K))
             player.ActivePlayer(false);
     }
+
 
     private void OnGameOver()
     {
